@@ -48,6 +48,7 @@
   .card .real b{ font-weight:600; color:hsl(var(--hue) var(--card-sat) var(--card-lit)); }
   .open{ font-family:var(--mono); font-size:.72rem; color:hsl(var(--hue) var(--card-sat) var(--card-lit)); }
   .card:hover .open{ text-decoration:underline; }
+  .card.contribute{ border-style:dashed; background:transparent; }
   footer{ border-top:1px solid var(--line); padding-top:18px; font-size:.84rem; color:var(--muted); }
   footer a{ color:var(--accent); }
   footer b{ color:var(--ink); }
@@ -94,6 +95,13 @@
       <p>Four sorting algorithms race on the same bars — every comparison plays a note.</p>
       <p class="real"><b>Real:</b> genuine implementations as generators; sound and visuals are driven by the actual compare/swap events.</p>
       <span class="open">Open →</span>
+    </a>
+    <a class="card contribute" style="--hue:45" href="https://github.com/karanb192/fable5-demos/blob/main/CONTRIBUTING.md">
+      <div class="card-top"><span class="glyph">＋</span><span class="cat">Open to all</span></div>
+      <h2>Add yours</h2>
+      <p>Got a one-shot demo — any model — where the depth is visible? This gallery takes PRs.</p>
+      <p class="real"><b>Bar:</b> one self-contained file, real algorithms (we check the source), honest one-shot statement.</p>
+      <span class="open">Contribute →</span>
     </a>
   </div>
 
