@@ -1,0 +1,1006 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Murmuration</title>
+<meta name="description" content="Thousands of starlings flock like the real thing — your cursor is the hawk. Click to dive.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Murmuration">
+<meta property="og:description" content="Thousands of starlings flock like the real thing — your cursor is the hawk. Click to dive.">
+<meta property="og:url" content="https://karanb192.github.io/fable5-demos/murmuration/">
+<meta property="og:image" content="https://karanb192.github.io/fable5-demos/murmuration/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Murmuration">
+<meta name="twitter:description" content="Thousands of starlings flock like the real thing — your cursor is the hawk. Click to dive.">
+<meta name="twitter:image" content="https://karanb192.github.io/fable5-demos/murmuration/og.png">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕊️</text></svg>'>
+<style>body{margin:0}</style>
+</head>
+<body>
+<style>
+  /*
+    This page commits to a single visual world: a dusk sky painted on canvas.
+    The committed background is set explicitly below; UI tokens are repeated
+    across theme blocks so the viewer's toggle never breaks legibility.
+  */
+  :root{
+    --scene:#10142b;
+    --ink:#ece6d8;
+    --ink-dim:#b3ac9c;
+    --ink-faint:#847e70;
+    --amber:#e8933f;
+    --panel:rgba(9,11,20,0.58);
+    --line:rgba(236,230,216,0.16);
+    --focus:#f0b264;
+    --font:Seravek,"Gill Sans Nova","Gill Sans",Ubuntu,Calibri,"Trebuchet MS","DejaVu Sans",source-sans-pro,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --scene:#10142b; --ink:#ece6d8; --ink-dim:#b3ac9c; --panel:rgba(9,11,20,0.58); }
+  }
+  :root[data-theme="dark"]{ --scene:#10142b; --ink:#ece6d8; --ink-dim:#b3ac9c; --panel:rgba(9,11,20,0.58); }
+  :root[data-theme="light"]{ --scene:#10142b; --ink:#ece6d8; --ink-dim:#b3ac9c; --panel:rgba(9,11,20,0.58); }
+
+  html,body{height:100%;}
+  body{
+    margin:0;
+    overflow:hidden;
+    background:var(--scene);
+    color:var(--ink);
+    font-family:var(--font);
+    -webkit-font-smoothing:antialiased;
+  }
+  #sim{
+    position:fixed; inset:0;
+    width:100%; height:100%;
+    display:block;
+    cursor:none;
+    touch-action:none;
+  }
+  #sim:focus-visible{ outline:2px solid var(--focus); outline-offset:-3px; }
+
+  /* ---- museum placard, top-left ---- */
+  .placard{
+    position:fixed;
+    top:clamp(14px,3.5vh,30px);
+    left:clamp(14px,3vw,32px);
+    max-width:min(330px,74vw);
+    pointer-events:none;
+    text-shadow:0 1px 8px rgba(8,10,18,0.55);
+  }
+  .placard::before{
+    content:"";
+    display:block;
+    width:26px; height:2px;
+    background:var(--amber);
+    margin-bottom:12px;
+  }
+  .placard h1{
+    margin:0 0 2px;
+    font-size:clamp(15px,1.6vw,18px);
+    font-weight:600;
+    letter-spacing:0.22em;
+    text-transform:uppercase;
+  }
+  .placard .species{
+    margin:0 0 10px;
+    font-style:italic;
+    font-size:12px;
+    color:var(--ink-dim);
+    letter-spacing:0.02em;
+    font-variant-numeric:tabular-nums;
+  }
+  .placard .lede{
+    margin:0 0 10px;
+    font-size:13px;
+    line-height:1.55;
+    color:var(--ink-dim);
+    max-width:30ch;
+  }
+  .placard .hint{
+    margin:0;
+    font-size:12.5px;
+    line-height:1.5;
+    color:var(--ink);
+  }
+  .placard .hint b{ color:var(--amber); font-weight:600; }
+
+  /* ---- controls, bottom-right ---- */
+  .panel{
+    position:fixed;
+    right:clamp(10px,2vw,26px);
+    bottom:clamp(12px,3vh,28px);
+    width:216px;
+    background:var(--panel);
+    -webkit-backdrop-filter:blur(12px);
+    backdrop-filter:blur(12px);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:14px 14px 10px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .sliders{ display:flex; flex-direction:column; gap:9px; }
+  .ctl{ display:grid; grid-template-columns:1fr auto; align-items:baseline; gap:0 8px; }
+  .ctl label{
+    font-size:10.5px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+  }
+  .ctl output{
+    font-size:11px;
+    color:var(--ink);
+    font-variant-numeric:tabular-nums;
+  }
+  .ctl input[type="range"]{
+    grid-column:1 / -1;
+    width:100%;
+    margin:2px 0 0;
+    accent-color:var(--amber);
+    height:16px;
+    background:transparent;
+  }
+  .row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    border-top:1px solid var(--line);
+    padding-top:10px;
+  }
+  .tog{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    font-size:11px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    cursor:pointer;
+    user-select:none;
+  }
+  .tog input{ accent-color:var(--amber); width:14px; height:14px; margin:0; cursor:pointer; }
+  #soundBtn{
+    font:inherit;
+    font-size:11px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    background:transparent;
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:4px 9px;
+    cursor:pointer;
+  }
+  #soundBtn[aria-pressed="true"]{ color:var(--amber); border-color:var(--amber); }
+  #soundBtn:hover{ color:var(--ink); }
+  .stats{
+    font-size:10.5px;
+    color:var(--ink-faint);
+    font-variant-numeric:tabular-nums;
+    letter-spacing:0.04em;
+  }
+  input[type="range"]:focus-visible,
+  input[type="checkbox"]:focus-visible,
+  #soundBtn:focus-visible,
+  #beginBtn:focus-visible{
+    outline:2px solid var(--focus);
+    outline-offset:2px;
+  }
+
+  .foot{
+    position:fixed;
+    left:clamp(14px,3vw,32px);
+    bottom:10px;
+    font-size:10px;
+    letter-spacing:0.06em;
+    color:var(--ink-faint);
+    pointer-events:none;
+    text-shadow:0 1px 6px rgba(8,10,18,0.6);
+  }
+
+  /* ---- reduced-motion gate ---- */
+  #gate{
+    position:fixed; inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    background:rgba(8,10,18,0.45);
+    z-index:5;
+  }
+  #gate.show{ display:flex; }
+  #gate .card{
+    background:var(--panel);
+    -webkit-backdrop-filter:blur(12px);
+    backdrop-filter:blur(12px);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:22px 26px;
+    max-width:min(320px,84vw);
+    text-align:center;
+  }
+  #gate p{ margin:0 0 14px; font-size:13px; line-height:1.55; color:var(--ink-dim); }
+  #beginBtn{
+    font:inherit;
+    font-size:12px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:#14101a;
+    background:var(--amber);
+    border:none;
+    border-radius:4px;
+    padding:9px 18px;
+    cursor:pointer;
+  }
+
+  @media (max-width:640px){
+    .placard{ max-width:62vw; }
+    .placard .lede{ font-size:12px; }
+    .panel{
+      left:10px; right:10px; bottom:32px;
+      width:auto;
+    }
+    .sliders{
+      flex-direction:row;
+      gap:12px;
+    }
+    .sliders .ctl{ flex:1; }
+    .foot{ bottom:8px; }
+  }
+</style>
+
+<canvas id="sim" tabindex="0" aria-label="Starling murmuration simulation. Move the pointer to steer the hawk; click or press space to dive."></canvas>
+
+<header class="placard">
+  <h1>Murmuration</h1>
+  <p class="species"><i>Sturnus vulgaris</i> &middot; <span id="nBirdsTop">8,000</span> individuals</p>
+  <p class="lede">No leader, no plan &mdash; each bird follows three small rules: keep clear, match heading, drift together. Everything else emerges.</p>
+  <p class="hint"><b>Your cursor is the hawk.</b> Click to dive.</p>
+</header>
+
+<aside class="panel" aria-label="Flock controls">
+  <div class="sliders">
+    <div class="ctl">
+      <label for="coh">Cohesion</label><output id="cohv" for="coh">0.90&times;</output>
+      <input type="range" id="coh" min="0" max="2" step="0.05" value="0.9" aria-label="Cohesion strength">
+    </div>
+    <div class="ctl">
+      <label for="ali">Alignment</label><output id="aliv" for="ali">1.20&times;</output>
+      <input type="range" id="ali" min="0" max="2" step="0.05" value="1.2" aria-label="Alignment strength">
+    </div>
+    <div class="ctl">
+      <label for="fear">Fear</label><output id="fearv" for="fear">1.00&times;</output>
+      <input type="range" id="fear" min="0" max="2" step="0.05" value="1" aria-label="Fear of the hawk">
+    </div>
+  </div>
+  <div class="row">
+    <label class="tog"><input type="checkbox" id="wind">Wind</label>
+    <button id="soundBtn" type="button" aria-pressed="false">Sound off</button>
+  </div>
+  <div class="stats"><span id="nBirds">8,000</span> birds &middot; <span id="fps">&ndash;</span> fps</div>
+</aside>
+
+<div class="foot">Built in one shot by Claude Fable 5</div>
+
+<div id="gate" role="dialog" aria-label="Motion warning">
+  <div class="card">
+    <p>This piece is eight thousand birds in constant motion. Your system asks for reduced motion, so it is paused.</p>
+    <button id="beginBtn" type="button">Begin the murmuration</button>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- setup ---------- */
+var canvas = document.getElementById('sim');
+var ctx = canvas.getContext('2d', { alpha:false });
+
+var W = 0, H = 0, dpr = 1;
+var treeH = 0;
+var skyC = document.createElement('canvas'), skyX = skyC.getContext('2d');
+var treeC = document.createElement('canvas'), treeX = treeC.getContext('2d');
+var TREE_PAD = 64; // tree tops rise this far above the ground band
+
+/* ---------- population ---------- */
+var MAXN = 8000;
+var cores = navigator.hardwareConcurrency || 4;
+var small = Math.min(window.screen.width, window.screen.height) < 520;
+var N = MAXN;
+if (small || cores <= 4) N = 3600;
+else if (cores <= 6) N = 6000;
+var TARGET_N = N;
+
+var px = new Float32Array(MAXN), py = new Float32Array(MAXN);
+var vx = new Float32Array(MAXN), vy = new Float32Array(MAXN);
+var ph = new Float32Array(MAXN); // per-bird random phase (mark length / depth)
+
+/* ---------- spatial hash ---------- */
+var CELL = 42, R = 42, R2 = R * R, SEP = 13, SEP2 = SEP * SEP;
+var invCell = 1 / CELL;
+var cols = 1, rows = 1;
+var cellStart = new Int32Array(2), cellCount = new Int32Array(1), cellPtr = new Int32Array(1);
+var order = new Int32Array(MAXN), cellOf = new Int32Array(MAXN);
+var MAXNB = 18;
+
+/* ---------- tunables ---------- */
+var P = { coh:0.9, ali:1.2, fear:1.0, wind:false };
+var MAXS = 185, MINS = 95;
+var panic = 0;
+
+/* ---------- hawk ---------- */
+var hx = -2000, hy = -2000, hvx = 60, hvy = 0;
+var tx = -2000, ty = -2000;
+var hawkSeen = false;
+var diving = false, diveT = 0, dvX = 0, dvY = 0;
+var rings = []; // {x,y,t}
+
+/* ---------- audio ---------- */
+var actx = null, master = null, soundOn = false;
+
+/* ---------- state ---------- */
+var running = true;
+var lastT = 0, emaFrame = 16, fpsShow = 0, fpsAcc = 0, fpsN = 0, fpsClock = 0, qClock = 0;
+var turnSmooth = 1.0;
+var t = 0;
+
+var fmt = function(n){ return n.toLocaleString('en-US'); };
+
+/* ---------- resize / scenery ---------- */
+function resize(){
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = Math.max(320, window.innerWidth);
+  H = Math.max(320, window.innerHeight);
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  treeH = Math.max(64, Math.min(170, H * 0.15));
+
+  cols = Math.max(1, Math.ceil(W * invCell));
+  rows = Math.max(1, Math.ceil(H * invCell));
+  cellStart = new Int32Array(cols * rows + 1);
+  cellCount = new Int32Array(cols * rows);
+  cellPtr = new Int32Array(cols * rows);
+
+  renderSky();
+  renderTrees();
+
+  for (var i = 0; i < MAXN; i++){
+    if (px[i] < 2) px[i] = 2; else if (px[i] > W - 2) px[i] = W - 2;
+    if (py[i] < 2) py[i] = 2; else if (py[i] > H - 2) py[i] = H - 2;
+  }
+}
+
+function renderSky(){
+  skyC.width = Math.round(W * dpr);
+  skyC.height = Math.round(H * dpr);
+  skyX.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  var hb = (H - treeH) / H; // horizon as fraction of height
+  var g = skyX.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#0e1226');
+  g.addColorStop(Math.max(0.01, hb * 0.42), '#242946');
+  g.addColorStop(hb * 0.68, '#4c4055');
+  g.addColorStop(hb * 0.86, '#84503c');
+  g.addColorStop(hb * 0.965, '#d67e33');
+  g.addColorStop(Math.min(1, hb), '#f2a751');
+  g.addColorStop(Math.min(1, hb + 0.035), '#a75c28');
+  g.addColorStop(1, '#4f3020');
+  skyX.fillStyle = g;
+  skyX.fillRect(0, 0, W, H);
+
+  // sun glow low on the horizon, right of centre
+  var sx = W * 0.66, sy = H - treeH + 6;
+  var rg = skyX.createRadialGradient(sx, sy, 0, sx, sy, Math.max(160, W * 0.26));
+  rg.addColorStop(0, 'rgba(255,198,120,0.34)');
+  rg.addColorStop(0.45, 'rgba(240,150,70,0.13)');
+  rg.addColorStop(1, 'rgba(240,150,70,0)');
+  skyX.fillStyle = rg;
+  skyX.fillRect(0, 0, W, H);
+
+  // thin dark cloud streaks in the mid sky
+  skyX.fillStyle = 'rgba(16,16,30,0.10)';
+  var i, cy, cw, chh;
+  for (i = 0; i < 6; i++){
+    cy = H * (0.18 + 0.09 * i) + (Math.sin(i * 12.9) * 14);
+    cw = W * (0.22 + 0.42 * Math.abs(Math.sin(i * 5.3)));
+    chh = 3 + 5 * Math.abs(Math.sin(i * 2.7));
+    skyX.beginPath();
+    skyX.ellipse((W * (0.15 + 0.6 * Math.abs(Math.sin(i * 3.1)))) , cy, cw, chh, 0, 0, Math.PI * 2);
+    skyX.fill();
+  }
+
+  // faint stars in the upper indigo
+  for (i = 0; i < 70; i++){
+    var a = 0.08 + Math.random() * 0.4;
+    skyX.fillStyle = 'rgba(214,222,255,' + a.toFixed(3) + ')';
+    var r = Math.random() < 0.85 ? 0.7 : 1.15;
+    skyX.beginPath();
+    skyX.arc(Math.random() * W, Math.random() * H * 0.36, r, 0, Math.PI * 2);
+    skyX.fill();
+  }
+}
+
+function renderTrees(){
+  var TH = Math.round(treeH + TREE_PAD);
+  treeC.width = Math.round(W * dpr);
+  treeC.height = Math.round(TH * dpr);
+  treeX.setTransform(dpr, 0, 0, dpr, 0, 0);
+  treeX.clearRect(0, 0, W, TH);
+
+  var s1 = Math.random() * 9, s2 = Math.random() * 9, s3 = Math.random() * 9;
+  function ridge(x){
+    return Math.sin(x * 0.006 + s1) * 9 + Math.sin(x * 0.019 + s2) * 5 + Math.sin(x * 0.047 + s3) * 2.5;
+  }
+  var baseY = TH - treeH * 0.72; // ground line inside the strip
+  var x;
+
+  // far, hazier ridge
+  treeX.fillStyle = 'rgba(30,22,34,0.85)';
+  treeX.beginPath();
+  treeX.moveTo(0, TH);
+  for (x = 0; x <= W; x += 6){
+    treeX.lineTo(x, baseY - 16 + ridge(x * 1.7 + 400) * 1.1);
+  }
+  treeX.lineTo(W, TH);
+  treeX.closePath();
+  treeX.fill();
+
+  // near ground band
+  treeX.fillStyle = '#0a0d13';
+  treeX.beginPath();
+  treeX.moveTo(0, TH);
+  for (x = 0; x <= W; x += 5){
+    treeX.lineTo(x, baseY + ridge(x));
+  }
+  treeX.lineTo(W, TH);
+  treeX.closePath();
+  treeX.fill();
+
+  // trees planted on the near ridge
+  x = 4;
+  while (x < W){
+    var gy = baseY + ridge(x);
+    var h = 20 + Math.random() * 42;
+    if (Math.random() < 0.62){
+      // conifer: narrow stacked triangles
+      var wHalf = 4 + h * 0.16;
+      treeX.fillStyle = '#0a0d13';
+      treeX.beginPath();
+      treeX.moveTo(x, gy - h);
+      treeX.lineTo(x - wHalf, gy + 2);
+      treeX.lineTo(x + wHalf, gy + 2);
+      treeX.closePath();
+      treeX.fill();
+      treeX.beginPath();
+      treeX.moveTo(x, gy - h * 1.18);
+      treeX.lineTo(x - wHalf * 0.62, gy - h * 0.42);
+      treeX.lineTo(x + wHalf * 0.62, gy - h * 0.42);
+      treeX.closePath();
+      treeX.fill();
+    } else {
+      // broadleaf: blobby canopy on a trunk
+      treeX.fillStyle = '#0a0d13';
+      treeX.fillRect(x - 1, gy - h * 0.5, 2, h * 0.5 + 3);
+      treeX.beginPath();
+      treeX.arc(x, gy - h * 0.62, h * 0.30, 0, Math.PI * 2);
+      treeX.arc(x - h * 0.2, gy - h * 0.48, h * 0.22, 0, Math.PI * 2);
+      treeX.arc(x + h * 0.2, gy - h * 0.5, h * 0.24, 0, Math.PI * 2);
+      treeX.fill();
+    }
+    x += 10 + Math.random() * 26;
+  }
+}
+
+/* ---------- flock ---------- */
+function spawnAll(){
+  var cx0 = W * 0.44, cy0 = (H - treeH) * 0.42;
+  var baseA = Math.random() * Math.PI * 2;
+  for (var i = 0; i < MAXN; i++){
+    var a = Math.random() * Math.PI * 2;
+    var r = (Math.random() + Math.random()) * 0.5 * Math.min(W, H) * 0.24;
+    px[i] = cx0 + Math.cos(a) * r * 1.4;
+    py[i] = cy0 + Math.sin(a) * r * 0.8;
+    var va = baseA + (Math.random() - 0.5) * 1.2;
+    var sp = 110 + Math.random() * 50;
+    vx[i] = Math.cos(va) * sp;
+    vy[i] = Math.sin(va) * sp;
+    ph[i] = Math.random();
+  }
+}
+
+function buildGrid(){
+  var i, c;
+  cellCount.fill(0);
+  for (i = 0; i < N; i++){
+    var cx = (px[i] * invCell) | 0;
+    var cy = (py[i] * invCell) | 0;
+    if (cx < 0) cx = 0; else if (cx >= cols) cx = cols - 1;
+    if (cy < 0) cy = 0; else if (cy >= rows) cy = rows - 1;
+    c = cy * cols + cx;
+    cellOf[i] = c;
+    cellCount[c]++;
+  }
+  var sum = 0, nc = cols * rows;
+  for (c = 0; c < nc; c++){
+    cellStart[c] = sum;
+    cellPtr[c] = sum;
+    sum += cellCount[c];
+  }
+  cellStart[nc] = sum;
+  for (i = 0; i < N; i++){
+    order[cellPtr[cellOf[i]]++] = i;
+  }
+}
+
+var turnAcc = 0, turnN = 0;
+
+function step(dt){
+  buildGrid();
+
+  var kAli = 2.2 * P.ali;
+  var kCoh = 0.95 * P.coh;
+  var kSep = 3.4;
+  var kAtt = 0.045 + 0.085 * P.coh;
+  var fearR = 90 + 70 * P.fear + (diving ? 90 : 0);
+  var fearR2 = fearR * fearR;
+  var fearF = 2400 * P.fear * (diving ? 2.4 : 1);
+  var maxs = MAXS * (1 + 0.55 * panic);
+  var mins = MINS;
+  var yFloor = H - treeH - 26;
+  var yCeil = 36;
+  var xMar = 60;
+
+  // wandering point of attention keeps the flock loosely on stage
+  var attX = W * 0.5 + Math.cos(t * 0.13) * W * 0.21 + Math.sin(t * 0.041) * W * 0.08;
+  var attY = (H - treeH) * 0.44 + Math.sin(t * 0.09) * (H - treeH) * 0.17;
+
+  var windOn = P.wind;
+  var wt = t * 0.25;
+
+  turnAcc = 0; turnN = 0;
+
+  for (var i = 0; i < N; i++){
+    var x = px[i], y = py[i];
+    var vxi = vx[i], vyi = vy[i];
+
+    var cx = (x * invCell) | 0; if (cx < 0) cx = 0; else if (cx >= cols) cx = cols - 1;
+    var cy = (y * invCell) | 0; if (cy < 0) cy = 0; else if (cy >= rows) cy = rows - 1;
+
+    var avx = 0, avy = 0, ccx = 0, ccy = 0, sxv = 0, syv = 0;
+    var na = 0, ns = 0;
+    var ox, oy, xx, yy, c, k, kEnd, j, dx, dy, d2, d, w;
+
+    // own cell first (nearest neighbours), then the ring around it
+    scan:
+    for (var pass = 0; pass < 10; pass++){
+      if (pass === 0){ xx = cx; yy = cy; }
+      else {
+        ox = ((pass - 1) % 3) - 1;
+        oy = (((pass - 1) / 3) | 0) - 1;
+        if (ox === 0 && oy === 0) continue;
+        xx = cx + ox; yy = cy + oy;
+        if (xx < 0 || xx >= cols || yy < 0 || yy >= rows) continue;
+      }
+      c = yy * cols + xx;
+      k = cellStart[c]; kEnd = cellStart[c] + cellCount[c];
+      for (; k < kEnd; k++){
+        j = order[k];
+        if (j === i) continue;
+        dx = px[j] - x; dy = py[j] - y;
+        d2 = dx * dx + dy * dy;
+        if (d2 > R2) continue;
+        na++;
+        avx += vx[j]; avy += vy[j];
+        ccx += dx; ccy += dy;
+        if (d2 < SEP2){
+          d = Math.sqrt(d2) + 0.001;
+          w = (SEP - d) / SEP;
+          sxv -= dx / d * w; syv -= dy / d * w;
+          ns++;
+        }
+        if (na >= MAXNB) break scan;
+      }
+    }
+
+    var fx = 0, fy = 0, m;
+    if (na > 0){
+      m = Math.sqrt(avx * avx + avy * avy);
+      if (m > 0.001){
+        fx += (avx / m * maxs - vxi) * kAli;
+        fy += (avy / m * maxs - vyi) * kAli;
+      }
+      ccx /= na; ccy /= na;
+      m = Math.sqrt(ccx * ccx + ccy * ccy);
+      if (m > 0.001){
+        fx += (ccx / m * maxs - vxi) * kCoh;
+        fy += (ccy / m * maxs - vyi) * kCoh;
+      }
+      if (ns > 0){
+        m = Math.sqrt(sxv * sxv + syv * syv);
+        if (m > 0.001){
+          fx += (sxv / m * maxs - vxi) * kSep;
+          fy += (syv / m * maxs - vyi) * kSep;
+        }
+      }
+    }
+
+    // hawk
+    if (hawkSeen){
+      dx = x - hx; dy = y - hy;
+      d2 = dx * dx + dy * dy;
+      if (d2 < fearR2){
+        d = Math.sqrt(d2) + 0.001;
+        w = 1 - d / fearR; w *= w;
+        var s = fearF * w / d;
+        fx += dx * s; fy += dy * s;
+      }
+    }
+
+    // wandering attractor + soft bounds
+    fx += (attX - x) * kAtt;
+    fy += (attY - y) * kAtt;
+    if (x < xMar) fx += (xMar - x) * 4;
+    else if (x > W - xMar) fx -= (x - (W - xMar)) * 4;
+    if (y < yCeil) fy += (yCeil - y) * 5;
+    else if (y > yFloor) fy -= (y - yFloor) * 6;
+
+    // wind advection
+    if (windOn){
+      fx += 24 * Math.sin(wt + y * 0.004) + 12;
+      fy += 7 * Math.sin(wt * 0.7 + x * 0.003);
+    }
+
+    // a pinch of noise keeps the sheet alive
+    fx += (Math.random() - 0.5) * 150;
+    fy += (Math.random() - 0.5) * 150;
+
+    var oldx = vxi, oldy = vyi;
+    vxi += fx * dt; vyi += fy * dt;
+    var sp = Math.sqrt(vxi * vxi + vyi * vyi);
+    if (sp < 0.001){ vxi = mins; vyi = 0; sp = mins; }
+    if (sp > maxs){ m = maxs / sp; vxi *= m; vyi *= m; sp = maxs; }
+    else if (sp < mins){ m = mins / sp; vxi *= m; vyi *= m; sp = mins; }
+
+    if ((i & 7) === 0){
+      var osp = Math.sqrt(oldx * oldx + oldy * oldy) + 0.001;
+      turnAcc += Math.abs(oldx * vyi - oldy * vxi) / (osp * sp);
+      turnN++;
+    }
+
+    x += vxi * dt; y += vyi * dt;
+    if (x < 2){ x = 2; vxi = Math.abs(vxi) * 0.6; }
+    else if (x > W - 2){ x = W - 2; vxi = -Math.abs(vxi) * 0.6; }
+    if (y < 2){ y = 2; vyi = Math.abs(vyi) * 0.6; }
+    else if (y > H - 4){ y = H - 4; vyi = -Math.abs(vyi) * 0.6; }
+
+    px[i] = x; py[i] = y; vx[i] = vxi; vy[i] = vyi;
+  }
+
+  if (panic > 0) panic = Math.max(0, panic - dt * 1.6);
+
+  var inst = turnN > 0 ? (turnAcc / turnN) / Math.max(dt, 0.001) : 0;
+  turnSmooth += (inst - turnSmooth) * 0.08;
+}
+
+/* ---------- hawk ---------- */
+function stepHawk(dt){
+  var k;
+  var pxh = hx, pyh = hy;
+  if (diving){
+    diveT += dt;
+    k = 1 - Math.exp(-dt * 15);
+    hx += (dvX - hx) * k;
+    hy += (dvY - hy) * k;
+    if (diveT > 0.55) diving = false;
+  } else if (hawkSeen){
+    k = 1 - Math.exp(-dt * 6.5);
+    hx += (tx - hx) * k;
+    hy += (ty - hy) * k;
+  }
+  var nvx = (hx - pxh) / Math.max(dt, 0.001);
+  var nvy = (hy - pyh) / Math.max(dt, 0.001);
+  hvx += (nvx - hvx) * 0.25;
+  hvy += (nvy - hvy) * 0.25;
+}
+
+function dive(x, y){
+  dvX = x; dvY = y;
+  diving = true; diveT = 0;
+  panic = 1;
+  rings.push({ x:x, y:y, t:0 });
+  // flash expansion: immediate radial impulse
+  var RB = 175, RB2 = RB * RB;
+  for (var i = 0; i < N; i++){
+    var dx = px[i] - x, dy = py[i] - y;
+    var d2 = dx * dx + dy * dy;
+    if (d2 < RB2){
+      var d = Math.sqrt(d2) + 0.001;
+      var w = 1 - d / RB;
+      vx[i] += dx / d * w * 540;
+      vy[i] += dy / d * w * 540;
+    }
+  }
+}
+
+/* ---------- render ---------- */
+function render(dt){
+  ctx.drawImage(skyC, 0, 0, W, H);
+
+  // dive shock rings
+  for (var r = rings.length - 1; r >= 0; r--){
+    var g = rings[r];
+    g.t += dt;
+    if (g.t > 0.45){ rings.splice(r, 1); continue; }
+    var a = 0.30 * (1 - g.t / 0.45);
+    ctx.strokeStyle = 'rgba(242,167,81,' + a.toFixed(3) + ')';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(g.x, g.y, 24 + g.t * 560, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // birds: elongated marks along velocity, two depth batches
+  var i, x, y, sp, ux, uy, L;
+  ctx.lineWidth = 1.15;
+  ctx.lineCap = 'butt';
+
+  ctx.strokeStyle = 'rgba(13,15,24,0.92)';
+  ctx.beginPath();
+  for (i = 0; i < N; i += 2){
+    x = px[i]; y = py[i];
+    sp = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i]) + 0.001;
+    L = 3.4 + ph[i] * 2.6;
+    ux = vx[i] / sp * L; uy = vy[i] / sp * L;
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - ux, y - uy);
+  }
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(18,20,32,0.55)';
+  ctx.beginPath();
+  for (i = 1; i < N; i += 2){
+    x = px[i]; y = py[i];
+    sp = Math.sqrt(vx[i] * vx[i] + vy[i] * vy[i]) + 0.001;
+    L = 3.0 + ph[i] * 2.2;
+    ux = vx[i] / sp * L; uy = vy[i] / sp * L;
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - ux, y - uy);
+  }
+  ctx.stroke();
+
+  if (hawkSeen) drawHawk();
+
+  ctx.drawImage(treeC, 0, H - (treeH + TREE_PAD), W, treeH + TREE_PAD);
+}
+
+function drawHawk(){
+  var ang = Math.atan2(hvy, hvx);
+  var sc = diving ? 1.3 : 1.05;
+  ctx.save();
+  ctx.translate(hx, hy);
+  ctx.rotate(ang);
+  ctx.scale(sc, sc);
+  ctx.fillStyle = '#0b0d15';
+  ctx.beginPath();
+  ctx.moveTo(11, 0);                       // beak
+  ctx.quadraticCurveTo(3, -2.5, -1, -3);   // shoulder
+  ctx.quadraticCurveTo(-3, -12, -9, -15);  // upper wingtip, swept back
+  ctx.quadraticCurveTo(-6, -6, -7, -2);    // wing trailing edge
+  ctx.lineTo(-14, -1.6);                   // tail
+  ctx.lineTo(-14, 1.6);
+  ctx.lineTo(-7, 2);
+  ctx.quadraticCurveTo(-6, 6, -9, 15);     // lower wingtip
+  ctx.quadraticCurveTo(-3, 12, -1, 3);
+  ctx.quadraticCurveTo(3, 2.5, 11, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+/* ---------- audio ---------- */
+function initAudio(){
+  var AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return false;
+  actx = new AC();
+  var len = actx.sampleRate * 2;
+  var buf = actx.createBuffer(1, len, actx.sampleRate);
+  var data = buf.getChannelData(0);
+  for (var i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  var src = actx.createBufferSource();
+  src.buffer = buf; src.loop = true;
+
+  var bp = actx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 0.65;
+
+  master = actx.createGain();
+  master.gain.value = 0;
+
+  // slow flutter, like thousands of wingbeats phasing in and out
+  var lfo = actx.createOscillator();
+  lfo.frequency.value = 7;
+  var lfoG = actx.createGain();
+  lfoG.gain.value = 0.008;
+  lfo.connect(lfoG);
+  lfoG.connect(master.gain);
+  lfo.start();
+
+  src.connect(bp); bp.connect(master); master.connect(actx.destination);
+  src.start();
+  return true;
+}
+
+function updateAudio(){
+  if (!soundOn || !actx || !master) return;
+  var tr = Math.max(0, turnSmooth - 0.55);
+  var target = Math.min(0.075, 0.006 + tr * 0.02 + panic * 0.03);
+  master.gain.setTargetAtTime(target, actx.currentTime, 0.12);
+}
+
+/* ---------- main loop ---------- */
+function frame(now){
+  requestAnimationFrame(frame);
+  if (!running) return;
+  if (!lastT) lastT = now;
+  var raw = now - lastT;
+  lastT = now;
+  var dt = Math.min(raw / 1000, 0.033);
+  if (dt <= 0) return;
+  t += dt;
+
+  stepHawk(dt);
+  step(dt);
+  render(dt);
+  updateAudio();
+
+  // fps meter
+  fpsAcc += raw; fpsN++;
+  fpsClock += raw;
+  if (fpsClock > 500){
+    fpsShow = Math.round(1000 / (fpsAcc / fpsN));
+    document.getElementById('fps').textContent = String(fpsShow);
+    fpsAcc = 0; fpsN = 0; fpsClock = 0;
+  }
+
+  // adaptive population keeps 60fps on weaker machines
+  emaFrame += (raw - emaFrame) * 0.05;
+  qClock += raw;
+  if (qClock > 2000){
+    qClock = 0;
+    if (emaFrame > 20 && N > 2400){
+      N = Math.max(2400, N - 900);
+      updateCount();
+    } else if (emaFrame < 12.5 && N < TARGET_N){
+      var oldN = N;
+      N = Math.min(TARGET_N, N + 500);
+      for (var i = oldN; i < N; i++){
+        var j = (Math.random() * oldN) | 0;
+        px[i] = px[j] + (Math.random() - 0.5) * 30;
+        py[i] = py[j] + (Math.random() - 0.5) * 30;
+        vx[i] = vx[j]; vy[i] = vy[j];
+      }
+      updateCount();
+    }
+  }
+}
+
+function updateCount(){
+  document.getElementById('nBirds').textContent = fmt(N);
+  document.getElementById('nBirdsTop').textContent = fmt(N);
+}
+
+/* ---------- input ---------- */
+function pointFrom(e){
+  return { x: e.clientX, y: e.clientY };
+}
+window.addEventListener('pointermove', function(e){
+  var p = pointFrom(e);
+  tx = p.x; ty = p.y;
+  if (!hawkSeen){
+    hawkSeen = true;
+    hx = p.x + 120; hy = p.y - 80;
+  }
+}, { passive:true });
+
+canvas.addEventListener('pointerdown', function(e){
+  var p = pointFrom(e);
+  tx = p.x; ty = p.y;
+  if (!hawkSeen){ hawkSeen = true; hx = p.x + 140; hy = p.y - 100; }
+  dive(p.x, p.y);
+});
+
+canvas.addEventListener('keydown', function(e){
+  var stepPx = 46;
+  if (e.key === ' ' || e.key === 'Enter'){
+    e.preventDefault();
+    if (!hawkSeen){ hawkSeen = true; hx = W * 0.5; hy = H * 0.4; tx = hx; ty = hy; }
+    dive(hawkSeen ? hx : W * 0.5, hawkSeen ? hy : H * 0.4);
+  } else if (e.key.indexOf('Arrow') === 0){
+    e.preventDefault();
+    if (!hawkSeen){ hawkSeen = true; hx = W * 0.5; hy = H * 0.4; tx = hx; ty = hy; }
+    if (e.key === 'ArrowLeft') tx -= stepPx;
+    else if (e.key === 'ArrowRight') tx += stepPx;
+    else if (e.key === 'ArrowUp') ty -= stepPx;
+    else if (e.key === 'ArrowDown') ty += stepPx;
+    tx = Math.max(0, Math.min(W, tx));
+    ty = Math.max(0, Math.min(H, ty));
+  }
+});
+
+/* ---------- controls ---------- */
+function bindSlider(id, outId, key){
+  var el = document.getElementById(id);
+  var out = document.getElementById(outId);
+  var apply = function(){
+    P[key] = parseFloat(el.value);
+    out.textContent = P[key].toFixed(2) + '×';
+  };
+  el.addEventListener('input', apply);
+  apply();
+}
+bindSlider('coh', 'cohv', 'coh');
+bindSlider('ali', 'aliv', 'ali');
+bindSlider('fear', 'fearv', 'fear');
+
+document.getElementById('wind').addEventListener('change', function(e){
+  P.wind = e.target.checked;
+});
+
+var soundBtn = document.getElementById('soundBtn');
+soundBtn.addEventListener('click', function(){
+  if (!soundOn){
+    if (!actx){
+      if (!initAudio()){ soundBtn.textContent = 'No audio'; soundBtn.disabled = true; return; }
+    }
+    if (actx.state === 'suspended') actx.resume();
+    soundOn = true;
+    soundBtn.textContent = 'Sound on';
+    soundBtn.setAttribute('aria-pressed', 'true');
+  } else {
+    soundOn = false;
+    if (master && actx) master.gain.setTargetAtTime(0, actx.currentTime, 0.08);
+    soundBtn.textContent = 'Sound off';
+    soundBtn.setAttribute('aria-pressed', 'false');
+  }
+});
+
+document.addEventListener('visibilitychange', function(){
+  if (document.hidden){
+    lastT = 0;
+    if (actx && soundOn) actx.suspend();
+  } else {
+    if (actx && soundOn) actx.resume();
+  }
+});
+
+window.addEventListener('resize', resize);
+
+/* ---------- reduced motion gate ---------- */
+var reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+var gate = document.getElementById('gate');
+document.getElementById('beginBtn').addEventListener('click', function(){
+  gate.classList.remove('show');
+  running = true;
+  lastT = 0;
+  canvas.focus();
+});
+
+/* ---------- go ---------- */
+resize();
+spawnAll();
+updateCount();
+if (reduced.matches){
+  running = false;
+  gate.classList.add('show');
+  render(0); // one still frame behind the gate
+}
+requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>

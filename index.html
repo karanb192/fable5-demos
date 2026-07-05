@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fable 5 Demos — real simulations, built in one shot</title>
+<meta name="description" content="Five interactive demos — real chaos theory, fluid dynamics, flocking, Fourier math and algorithm races — each built in a single shot by Claude Fable 5.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Fable 5 Demos">
+<meta property="og:description" content="Real physics, real math, zero libraries — five interactive pages built in one shot by Claude Fable 5.">
+<meta property="og:url" content="https://karanb192.github.io/fable5-demos/">
+<meta property="og:image" content="https://karanb192.github.io/fable5-demos/butterfly-effect/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Fable 5 Demos">
+<meta name="twitter:description" content="Real physics, real math, zero libraries — five interactive pages built in one shot by Claude Fable 5.">
+<meta name="twitter:image" content="https://karanb192.github.io/fable5-demos/butterfly-effect/og.png">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦋</text></svg>'>
+<style>
+  :root{
+    --ground:#F4F7F5; --surface:#FDFEFD; --ink:#10201B; --muted:#5A6E67;
+    --line:#D9E2DD; --accent:#0E7C66; --card-sat:58%; --card-lit:34%; --glyph-bg:#EDF3F0;
+    --serif:"Iowan Old Style","Palatino Nova",Palatino,Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --ground:#0C1512; --surface:#12201B; --ink:#E6F0EA; --muted:#8AA398;
+      --line:#22352E; --accent:#3FD0A4; --card-sat:64%; --card-lit:64%; --glyph-bg:#0F1B16; }
+  }
+  html{ background:var(--ground); }
+  body{ background:var(--ground); color:var(--ink); font-family:var(--sans); line-height:1.55; margin:0; }
+  .wrap{ max-width:1080px; margin:0 auto; padding:clamp(24px,5vw,64px) clamp(18px,4vw,40px) 48px; }
+  .eyebrow{ font-family:var(--mono); font-size:.72rem; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 14px; }
+  h1{ font-family:var(--serif); font-weight:600; font-size:clamp(2rem,5vw,3.2rem); line-height:1.08; letter-spacing:-.01em; margin:0 0 16px; text-wrap:balance; max-width:20ch; }
+  .thesis{ font-size:clamp(1rem,2vw,1.12rem); color:var(--muted); max-width:60ch; margin:0 0 38px; }
+  .thesis strong{ color:var(--ink); font-weight:600; }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; margin:0 0 48px; }
+  .card{ --hue:160; display:flex; flex-direction:column; gap:10px; background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:20px 20px 18px; text-decoration:none; color:var(--ink); transition:border-color .15s ease, transform .15s ease; }
+  .card:hover{ border-color:hsl(var(--hue) var(--card-sat) var(--card-lit)); transform:translateY(-2px); }
+  .card:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  @media (prefers-reduced-motion: reduce){ .card{ transition:none; } .card:hover{ transform:none; } }
+  .card-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .glyph{ font-size:1.8rem; line-height:1; background:var(--glyph-bg); border-radius:4px; padding:9px; }
+  .cat{ font-family:var(--mono); font-size:.66rem; letter-spacing:.13em; text-transform:uppercase; color:hsl(var(--hue) var(--card-sat) var(--card-lit)); text-align:right; }
+  .card h2{ font-size:1.12rem; font-weight:650; margin:2px 0 0; }
+  .card p{ font-size:.88rem; color:var(--muted); margin:0; }
+  .card .real{ font-size:.8rem; color:var(--ink); margin:0; padding-top:8px; border-top:1px solid var(--line); flex:1; }
+  .card .real b{ font-weight:600; color:hsl(var(--hue) var(--card-sat) var(--card-lit)); }
+  .open{ font-family:var(--mono); font-size:.72rem; color:hsl(var(--hue) var(--card-sat) var(--card-lit)); }
+  .card:hover .open{ text-decoration:underline; }
+  footer{ border-top:1px solid var(--line); padding-top:18px; font-size:.84rem; color:var(--muted); }
+  footer a{ color:var(--accent); }
+  footer b{ color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">No libraries · No build step · One shot each</p>
+  <h1>Real simulations, written in a single attempt</h1>
+  <p class="thesis">Five self-contained interactive pages — <strong>real chaos theory, real fluid dynamics, real flocking, real Fourier math</strong> — each designed, coded and debugged end-to-end by <strong>Claude&nbsp;Fable&nbsp;5</strong> in one shot. View source on any of them: it's all one file.</p>
+
+  <div class="grid">
+    <a class="card" style="--hue:14" href="./butterfly-effect/">
+      <div class="card-top"><span class="glyph">🦋</span><span class="cat">Chaos</span></div>
+      <h2>The Butterfly Effect</h2>
+      <p>100 double pendulums released 0.0001° apart — watch them agree, then explode.</p>
+      <p class="real"><b>Real:</b> exact equations of motion, RK4-integrated at 240Hz in float64. The divergence is measured, not scripted.</p>
+      <span class="open">Open →</span>
+    </a>
+    <a class="card" style="--hue:255" href="./murmuration/">
+      <div class="card-top"><span class="glyph">🕊️</span><span class="cat">Emergence</span></div>
+      <h2>Murmuration</h2>
+      <p>Thousands of starlings flock like the real thing. Your cursor is the hawk.</p>
+      <p class="real"><b>Real:</b> Reynolds boids — separation, alignment, cohesion from actual neighbors via a spatial hash. The shapes emerge.</p>
+      <span class="open">Open →</span>
+    </a>
+    <a class="card" style="--hue:320" href="./ink-water/">
+      <div class="card-top"><span class="glyph">🖌️</span><span class="cat">Fluid</span></div>
+      <h2>Ink &amp; Water</h2>
+      <p>Pour living ink into water — a GPU fluid simulation you paint with.</p>
+      <p class="real"><b>Real:</b> Navier-Stokes in WebGL shaders — advection, vorticity confinement, Jacobi pressure projection.</p>
+      <span class="open">Open →</span>
+    </a>
+    <a class="card" style="--hue:160" href="./circle-scribe/">
+      <div class="card-top"><span class="glyph">✏️</span><span class="cat">Fourier</span></div>
+      <h2>Circle Scribe</h2>
+      <p>Draw anything — a chain of spinning circles redraws it perfectly.</p>
+      <p class="real"><b>Real:</b> a discrete Fourier transform of your sketch. The circles are the Fourier series, reconstructed live.</p>
+      <span class="open">Open →</span>
+    </a>
+    <a class="card" style="--hue:200" href="./sorting-orchestra/">
+      <div class="card-top"><span class="glyph">🎼</span><span class="cat">Algorithms</span></div>
+      <h2>Sorting Orchestra</h2>
+      <p>Four sorting algorithms race on the same bars — every comparison plays a note.</p>
+      <p class="real"><b>Real:</b> genuine implementations as generators; sound and visuals are driven by the actual compare/swap events.</p>
+      <span class="open">Open →</span>
+    </a>
+  </div>
+
+  <footer>Each page was built in one shot by <b>Claude Fable 5</b> — no frameworks, no CDNs, no human edits. <a href="https://github.com/karanb192/fable5-demos">Source on GitHub</a> · curated by <a href="https://karanbansal.in">Karan Bansal</a></footer>
+</div>
+</body>
+</html>

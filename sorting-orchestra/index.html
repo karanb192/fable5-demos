@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sorting Orchestra</title>
+<meta name="description" content="Four sorting algorithms race on the same shuffled bars — every comparison plays a note.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Sorting Orchestra">
+<meta property="og:description" content="Four sorting algorithms race on the same shuffled bars — every comparison plays a note.">
+<meta property="og:url" content="https://karanb192.github.io/fable5-demos/sorting-orchestra/">
+<meta property="og:image" content="https://karanb192.github.io/fable5-demos/sorting-orchestra/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Sorting Orchestra">
+<meta name="twitter:description" content="Four sorting algorithms race on the same shuffled bars — every comparison plays a note.">
+<meta name="twitter:image" content="https://karanb192.github.io/fable5-demos/sorting-orchestra/og.png">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎼</text></svg>'>
+<style>body{margin:0}</style>
+</head>
+<body>
+<style>
+  :root{
+    --bg:#e9ebee;
+    --panel:#ffffff;
+    --chrome:#dde1e6;
+    --ink:#161a20;
+    --muted:#5c6673;
+    --line:#c8cdd4;
+    --flash:rgba(10,14,20,.72);
+    --win:#149e52;
+    --winbar:rgba(20,158,82,.55);
+    --race:#118a49;
+    --race-ink:#ffffff;
+    --stop:#c22f2f;
+    --focus:#0b63d8;
+    --c-bubble:#d34120;
+    --c-insertion:#a97400;
+    --c-merge:#00789e;
+    --c-quick:#7040cf;
+    --canvas-bg:#f4f5f7;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0e1116;
+      --panel:#161a21;
+      --chrome:#1d222b;
+      --ink:#eef1f4;
+      --muted:#8b95a3;
+      --line:#2a313c;
+      --flash:rgba(255,255,255,.92);
+      --win:#3ddc84;
+      --winbar:rgba(61,220,132,.5);
+      --race:#1db95e;
+      --race-ink:#06130b;
+      --stop:#e04848;
+      --focus:#5aa2ff;
+      --c-bubble:#ff6a4d;
+      --c-insertion:#ffc233;
+      --c-merge:#38c9f2;
+      --c-quick:#ab84ff;
+      --canvas-bg:#10141a;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0e1116; --panel:#161a21; --chrome:#1d222b; --ink:#eef1f4; --muted:#8b95a3;
+    --line:#2a313c; --flash:rgba(255,255,255,.92); --win:#3ddc84; --winbar:rgba(61,220,132,.5);
+    --race:#1db95e; --race-ink:#06130b; --stop:#e04848; --focus:#5aa2ff;
+    --c-bubble:#ff6a4d; --c-insertion:#ffc233; --c-merge:#38c9f2; --c-quick:#ab84ff;
+    --canvas-bg:#10141a;
+  }
+  :root[data-theme="light"]{
+    --bg:#e9ebee; --panel:#ffffff; --chrome:#dde1e6; --ink:#161a20; --muted:#5c6673;
+    --line:#c8cdd4; --flash:rgba(10,14,20,.72); --win:#149e52; --winbar:rgba(20,158,82,.55);
+    --race:#118a49; --race-ink:#ffffff; --stop:#c22f2f; --focus:#0b63d8;
+    --c-bubble:#d34120; --c-insertion:#a97400; --c-merge:#00789e; --c-quick:#7040cf;
+    --canvas-bg:#f4f5f7;
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.4;
+  }
+  .cond{
+    font-family:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow","Roboto Condensed",Impact,sans-serif;
+  }
+  .wrap{max-width:1140px;margin:0 auto;padding:0 16px 28px}
+
+  .stripe{height:4px;display:flex}
+  .stripe span{flex:1}
+
+  .masthead{
+    display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+    padding:18px 2px 6px;
+  }
+  .brand{
+    font-family:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow","Roboto Condensed",Impact,sans-serif;
+    font-size:clamp(26px,4.4vw,40px);
+    font-weight:700;letter-spacing:.06em;line-height:1;
+    display:flex;align-items:center;gap:12px;
+  }
+  .livedot{
+    width:11px;height:11px;border-radius:50%;background:var(--stop);flex:none;
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--stop) 25%, transparent);
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .livedot{animation:pulse 1.6s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  }
+  .tagline{color:var(--muted);font-size:14px;margin:0}
+  .mast-right{margin-left:auto}
+
+  .deck{
+    background:var(--chrome);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:12px 14px;
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    margin-top:10px;
+  }
+  button{
+    font-family:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow","Roboto Condensed",Impact,sans-serif;
+    font-weight:700;letter-spacing:.08em;
+    border:1px solid var(--line);
+    background:var(--panel);color:var(--ink);
+    border-radius:4px;cursor:pointer;
+    padding:8px 14px;font-size:14px;
+  }
+  button:hover{border-color:var(--muted)}
+  button:focus-visible, input:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+  #raceBtn{
+    background:var(--race);color:var(--race-ink);border-color:transparent;
+    font-size:20px;padding:10px 30px;min-width:120px;
+  }
+  #raceBtn.stopping{background:var(--stop);color:#fff}
+  .seg{display:flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+  .seg button{border:0;border-radius:0;background:var(--panel);color:var(--muted);font-size:12px;padding:8px 10px}
+  .seg button + button{border-left:1px solid var(--line)}
+  .seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+  .ctl{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.14em;color:var(--muted);font-weight:600}
+  .ctl input[type="range"]{accent-color:var(--race);width:110px}
+  .ctl output{
+    font-variant-numeric:tabular-nums;color:var(--ink);
+    font-weight:700;min-width:42px;text-align:right;font-size:14px;letter-spacing:0;
+  }
+  #soundBtn[aria-pressed="false"]{opacity:.55;text-decoration:line-through}
+
+  .ticker{
+    margin:10px 2px 12px;font-size:14px;color:var(--muted);
+    min-height:20px;
+  }
+  .ticker strong{color:var(--ink)}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:760px){.grid{grid-template-columns:1fr}}
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-top:4px solid var(--tc);
+    border-radius:6px;
+    display:flex;flex-direction:column;
+    min-width:0;
+  }
+  .grid.solo .panel{display:none}
+  .grid.solo .panel.solo-active{display:flex;grid-column:1 / -1}
+
+  .phead{display:flex;align-items:center;gap:10px;padding:9px 12px 7px;min-width:0}
+  .phead h2{
+    margin:0;font-size:19px;letter-spacing:.09em;font-weight:700;line-height:1;
+    font-family:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow","Roboto Condensed",Impact,sans-serif;
+    color:var(--tc);white-space:nowrap;
+  }
+  .bigo{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;letter-spacing:.05em;white-space:nowrap}
+  .flag{
+    margin-left:auto;font-size:12px;font-weight:700;letter-spacing:.08em;
+    background:var(--tc);color:var(--panel);
+    padding:3px 8px;border-radius:3px;font-variant-numeric:tabular-nums;white-space:nowrap;
+    font-family:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow","Roboto Condensed",Impact,sans-serif;
+  }
+  .flag .checker{
+    display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px;
+    background:
+      conic-gradient(var(--panel) 0 25%, transparent 0 50%, var(--panel) 0 75%, transparent 0) 0 0/6px 6px,
+      color-mix(in srgb, var(--tc) 40%, #000);
+  }
+  .solo-btn{margin-left:auto;font-size:11px;padding:5px 10px;color:var(--muted)}
+  .flag:not([hidden]) ~ .solo-btn{margin-left:8px}
+
+  .cwrap{
+    height:clamp(150px,22vh,235px);
+    margin:0 12px;border:1px solid var(--line);border-radius:3px;
+    background:var(--canvas-bg);overflow:hidden;position:relative;
+  }
+  .grid.solo .solo-active .cwrap{height:clamp(240px,44vh,430px)}
+  canvas{display:block;width:100%;height:100%}
+
+  .commentary{
+    display:none;margin:8px 12px 0;padding:7px 10px;
+    background:var(--chrome);border-left:3px solid var(--tc);border-radius:0 3px 3px 0;
+    font-size:14px;color:var(--ink);min-height:34px;
+  }
+  .grid.solo .solo-active .commentary{display:block}
+
+  .stats{
+    display:grid;grid-template-columns:1.2fr 1.2fr 1fr;gap:8px;
+    padding:8px 12px 12px;
+  }
+  .stat .lab{display:block;font-size:9.5px;letter-spacing:.18em;color:var(--muted);font-weight:600}
+  .stat .num{
+    font-family:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow","Roboto Condensed",Impact,sans-serif;
+    font-size:clamp(20px,2.6vw,27px);font-weight:700;line-height:1.15;
+    font-variant-numeric:tabular-nums;color:var(--ink);
+  }
+  .stat.done .num{color:var(--win)}
+
+  footer{margin-top:26px;text-align:center;font-size:12px;color:var(--muted)}
+</style>
+
+<div class="stripe" aria-hidden="true">
+  <span style="background:var(--c-bubble)"></span>
+  <span style="background:var(--c-insertion)"></span>
+  <span style="background:var(--c-merge)"></span>
+  <span style="background:var(--c-quick)"></span>
+</div>
+
+<div class="wrap">
+  <header class="masthead">
+    <div class="brand"><span class="livedot" aria-hidden="true"></span>SORTING ORCHESTRA</div>
+    <p class="tagline">Four algorithms race the same shuffled deck. Every comparison is a note.</p>
+    <button id="soundBtn" class="mast-right" aria-pressed="true">SOUND ON</button>
+  </header>
+
+  <section class="deck" aria-label="Race controls">
+    <button id="raceBtn">RACE</button>
+    <button id="shuffleBtn">RE-SHUFFLE</button>
+    <div class="seg" role="group" aria-label="Starting condition">
+      <button data-cond="random" aria-pressed="true">RANDOM</button>
+      <button data-cond="nearly" aria-pressed="false">NEARLY SORTED</button>
+      <button data-cond="reversed" aria-pressed="false">REVERSED</button>
+    </div>
+    <label class="ctl">BARS
+      <input id="sizeR" type="range" min="30" max="400" step="10" value="120">
+      <output id="sizeO">120</output>
+    </label>
+    <label class="ctl">SPEED
+      <input id="speedR" type="range" min="0" max="100" step="1" value="40">
+      <output id="speedO">1.0&times;</output>
+    </label>
+  </section>
+
+  <p class="ticker" id="ticker"><strong>Hit RACE.</strong> Sound on for the four-voice texture — try NEARLY SORTED to flip the winner.</p>
+
+  <main class="grid" id="grid"></main>
+
+  <footer>Built in one shot by Claude Fable 5</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- algorithms as generators ---------------- */
+  function* bubbleSort(a){
+    const n=a.length;
+    for(let pass=0;pass<n-1;pass++){
+      yield{t:"msg",text:"Pass "+(pass+1)+": sweeping left to right — the largest unsorted value bubbles up to slot "+(n-pass)+"."};
+      let swapped=false;
+      for(let i=0;i<n-1-pass;i++){
+        yield{t:"cmp",i:i,j:i+1};
+        if(a[i]>a[i+1]){const tmp=a[i];a[i]=a[i+1];a[i+1]=tmp;swapped=true;yield{t:"swap",i:i,j:i+1};}
+      }
+      if(!swapped){yield{t:"msg",text:"No swaps on pass "+(pass+1)+" — everything is in order, exiting early."};break;}
+    }
+  }
+
+  function* insertionSort(a){
+    const n=a.length;
+    for(let k=1;k<n;k++){
+      const v=a[k];let j=k-1;let shifted=0;
+      yield{t:"msg",text:"Picked up "+v+" — walking it left past anything bigger."};
+      while(j>=0){
+        yield{t:"cmp",i:j,j:j+1};
+        if(a[j]>v){a[j+1]=a[j];yield{t:"write",i:j+1};j--;shifted++;}
+        else break;
+      }
+      if(shifted>0){
+        a[j+1]=v;yield{t:"write",i:j+1};
+        if(shifted>8)yield{t:"msg",text:"Value "+v+" traveled "+shifted+" slots left before it fit."};
+      }
+    }
+    yield{t:"msg",text:"Every card inserted in place."};
+  }
+
+  function* mergeSort(a){
+    const n=a.length,aux=a.slice();
+    function* rec(lo,hi){ /* [lo,hi) */
+      if(hi-lo<2)return;
+      const mid=(lo+hi)>>1;
+      yield* rec(lo,mid);
+      yield* rec(mid,hi);
+      yield{t:"msg",text:"Merging two sorted runs, slots "+lo+"–"+(mid-1)+" and "+mid+"–"+(hi-1)+" ("+(hi-lo)+" items)."};
+      for(let k=lo;k<hi;k++)aux[k]=a[k];
+      let i=lo,j=mid;
+      for(let k=lo;k<hi;k++){
+        if(i<mid&&j<hi)yield{t:"cmp",i:i,j:j};
+        if(i>=mid)a[k]=aux[j++];
+        else if(j>=hi)a[k]=aux[i++];
+        else if(aux[j]<aux[i])a[k]=aux[j++];
+        else a[k]=aux[i++];
+        yield{t:"write",i:k};
+      }
+    }
+    yield* rec(0,n);
+    yield{t:"msg",text:"Final merge complete — one fully sorted run."};
+  }
+
+  function* quickSort(a){
+    function* rec(lo,hi){ /* inclusive */
+      if(lo>=hi)return;
+      if(hi-lo===1){
+        yield{t:"cmp",i:lo,j:hi};
+        if(a[hi]<a[lo]){const t=a[lo];a[lo]=a[hi];a[hi]=t;yield{t:"swap",i:lo,j:hi};}
+        return;
+      }
+      const mid=(lo+hi)>>1;
+      /* median-of-three: order a[lo] <= a[mid] <= a[hi] */
+      yield{t:"cmp",i:lo,j:mid};
+      if(a[mid]<a[lo]){const t=a[lo];a[lo]=a[mid];a[mid]=t;yield{t:"swap",i:lo,j:mid};}
+      yield{t:"cmp",i:lo,j:hi};
+      if(a[hi]<a[lo]){const t=a[lo];a[lo]=a[hi];a[hi]=t;yield{t:"swap",i:lo,j:hi};}
+      yield{t:"cmp",i:mid,j:hi};
+      if(a[hi]<a[mid]){const t=a[mid];a[mid]=a[hi];a[hi]=t;yield{t:"swap",i:mid,j:hi};}
+      if(hi-lo===2)return; /* three elements now sorted */
+      /* stash median pivot at hi-1, partition lo+1..hi-2 */
+      {const t=a[mid];a[mid]=a[hi-1];a[hi-1]=t;yield{t:"swap",i:mid,j:hi-1};}
+      const p=a[hi-1];
+      yield{t:"msg",text:"Quicksort just picked pivot "+p+" for slots "+lo+"–"+hi+" — smaller values go left, bigger go right."};
+      yield{t:"pivot",i:hi-1};
+      let s=lo;
+      for(let i=lo;i<hi-1;i++){
+        yield{t:"cmp",i:i,j:hi-1};
+        if(a[i]<p){
+          if(i!==s){const t=a[i];a[i]=a[s];a[s]=t;yield{t:"swap",i:i,j:s};}
+          s++;
+        }
+      }
+      {const t=a[s];a[s]=a[hi-1];a[hi-1]=t;yield{t:"swap",i:s,j:hi-1};}
+      yield{t:"msg",text:"Pivot "+p+" settled at slot "+s+" — recursing on "+Math.max(0,s-lo)+" items left, "+Math.max(0,hi-s)+" right."};
+      yield* rec(lo,s-1);
+      yield* rec(s+1,hi);
+    }
+    yield* rec(0,a.length-1);
+    yield{t:"msg",text:"All partitions collapsed — sorted."};
+  }
+
+  /* ---------------- teams ---------------- */
+  const ALGOS=[
+    {key:"bubble",   name:"BUBBLE",    bigo:"O(n²)",      gen:bubbleSort,    wave:"square",   pan:-0.7, vol:0.10},
+    {key:"insertion",name:"INSERTION", bigo:"O(n²)",      gen:insertionSort, wave:"triangle", pan:-0.25,vol:0.17},
+    {key:"merge",    name:"MERGE",     bigo:"O(n log n)",       gen:mergeSort,     wave:"sine",     pan:0.25, vol:0.22},
+    {key:"quick",    name:"QUICK",     bigo:"O(n log n)",       gen:quickSort,     wave:"sawtooth", pan:0.7,  vol:0.075}
+  ];
+  const PLACES=["1ST","2ND","3RD","4TH"];
+
+  /* ---------------- state ---------------- */
+  const grid=document.getElementById("grid");
+  const raceBtn=document.getElementById("raceBtn");
+  const shuffleBtn=document.getElementById("shuffleBtn");
+  const soundBtn=document.getElementById("soundBtn");
+  const sizeR=document.getElementById("sizeR"),sizeO=document.getElementById("sizeO");
+  const speedR=document.getElementById("speedR"),speedO=document.getElementById("speedO");
+  const ticker=document.getElementById("ticker");
+  const condBtns=Array.prototype.slice.call(document.querySelectorAll(".seg button"));
+
+  let n=120, condition="random", base=[], racing=false, finishedCount=0;
+  let soloKey=null, muted=false;
+  let BARCOLORS=[], FLASH_COLOR="rgba(255,255,255,.9)", WIN_COLOR="#3ddc84", WINBAR="rgba(61,220,132,.5)";
+  let lastMsgPaint=0;
+  const reduceMotion=function(){return window.matchMedia("(prefers-reduced-motion: reduce)").matches;};
+
+  function speedMult(){return 0.25*Math.pow(2,Number(speedR.value)/20);}
+
+  /* ---------------- panel construction ---------------- */
+  const panels=ALGOS.map(function(algo){
+    const el=document.createElement("section");
+    el.className="panel";
+    el.style.setProperty("--tc","var(--c-"+algo.key+")");
+    el.innerHTML=
+      '<header class="phead">'+
+        '<h2>'+algo.name+'</h2>'+
+        '<span class="bigo">'+algo.bigo+'</span>'+
+        '<span class="flag" hidden></span>'+
+        '<button class="solo-btn" aria-pressed="false">SOLO</button>'+
+      '</header>'+
+      '<div class="cwrap"><canvas role="img" aria-label="'+algo.name.toLowerCase()+' sort bar chart"></canvas></div>'+
+      '<p class="commentary" aria-live="off">Waiting for the gun.</p>'+
+      '<div class="stats">'+
+        '<div class="stat"><span class="lab">COMPARES</span><span class="num s-cmp">0</span></div>'+
+        '<div class="stat"><span class="lab">MOVES</span><span class="num s-mov">0</span></div>'+
+        '<div class="stat s-timewrap"><span class="lab">TIME</span><span class="num s-tim">0.0s</span></div>'+
+      '</div>';
+    grid.appendChild(el);
+    const canvas=el.querySelector("canvas");
+    const p={
+      algo:algo, el:el, canvas:canvas, ctx:canvas.getContext("2d"),
+      w:0,h:0, a:[], gen:null,
+      flashC:null, flashS:null, pivot:null,
+      cmp:0,mov:0,time:0, status:"ready", place:0, sweep:-1,
+      lastMsg:"Waiting for the gun.", sound:null, tc:"#888", dirty:true,
+      dom:{
+        flag:el.querySelector(".flag"),
+        solo:el.querySelector(".solo-btn"),
+        comm:el.querySelector(".commentary"),
+        cmp:el.querySelector(".s-cmp"),
+        mov:el.querySelector(".s-mov"),
+        tim:el.querySelector(".s-tim"),
+        timwrap:el.querySelector(".s-timewrap")
+      },
+      ch:null
+    };
+    p.dom.solo.addEventListener("click",function(){toggleSolo(algo.key);});
+    return p;
+  });
+
+  function activePanels(){
+    return soloKey?panels.filter(function(p){return p.algo.key===soloKey;}):panels;
+  }
+
+  /* ---------------- theme + colors ---------------- */
+  function isDark(){
+    const t=document.documentElement.getAttribute("data-theme");
+    if(t==="dark")return true;
+    if(t==="light")return false;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+  function rebuildBarColors(){
+    BARCOLORS=new Array(n);
+    const L=isDark()?60:48, S=isDark()?78:72;
+    for(let v=0;v<n;v++){
+      const t=n<=1?0:v/(n-1);
+      const h=(222+146*t)%360;
+      BARCOLORS[v]="hsl("+h.toFixed(1)+" "+S+"% "+L+"%)";
+    }
+  }
+  function refreshTheme(){
+    const cs=getComputedStyle(document.documentElement);
+    FLASH_COLOR=(cs.getPropertyValue("--flash")||"").trim()||FLASH_COLOR;
+    WIN_COLOR=(cs.getPropertyValue("--win")||"").trim()||WIN_COLOR;
+    WINBAR=(cs.getPropertyValue("--winbar")||"").trim()||WINBAR;
+    panels.forEach(function(p){
+      const c=getComputedStyle(p.el).getPropertyValue("--tc").trim();
+      if(c)p.tc=c;
+      p.dirty=true;
+    });
+    rebuildBarColors();
+  }
+  try{
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",refreshTheme);
+  }catch(e){/* older Safari */}
+  new MutationObserver(refreshTheme).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+
+  /* ---------------- canvas sizing ---------------- */
+  function resizePanel(p){
+    const r=p.canvas.parentElement.getBoundingClientRect();
+    const dpr=window.devicePixelRatio||1;
+    const w=Math.max(1,Math.round(r.width)),h=Math.max(1,Math.round(r.height));
+    p.canvas.width=Math.round(w*dpr);
+    p.canvas.height=Math.round(h*dpr);
+    p.ctx.setTransform(dpr,0,0,dpr,0,0);
+    p.w=w;p.h=h;p.dirty=true;
+  }
+  const ro=("ResizeObserver" in window)?new ResizeObserver(function(entries){
+    entries.forEach(function(en){
+      const p=panels.find(function(x){return x.canvas.parentElement===en.target;});
+      if(p)resizePanel(p);
+    });
+  }):null;
+  panels.forEach(function(p){
+    if(ro)ro.observe(p.canvas.parentElement);
+  });
+  window.addEventListener("resize",function(){panels.forEach(resizePanel);});
+
+  /* ---------------- audio ---------------- */
+  let actx=null,comp=null;
+  function ensureAudio(){
+    if(actx){if(actx.state==="suspended")actx.resume();return;}
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC)return;
+    actx=new AC();
+    comp=actx.createDynamicsCompressor();
+    const mg=actx.createGain();mg.gain.value=0.6;
+    comp.connect(mg);mg.connect(actx.destination);
+    panels.forEach(function(p){
+      const g=actx.createGain();g.gain.value=1;
+      if(actx.createStereoPanner){
+        const pan=actx.createStereoPanner();pan.pan.value=p.algo.pan;
+        g.connect(pan);pan.connect(comp);
+      }else{g.connect(comp);}
+      p.ch=g;
+    });
+  }
+  function blip(p,t01,when,volMul,dur,waveOverride){
+    if(!actx||muted||!p.ch)return;
+    const t=(when===undefined)?actx.currentTime:when;
+    const osc=actx.createOscillator(),g=actx.createGain();
+    osc.type=waveOverride||p.algo.wave;
+    osc.frequency.value=150*Math.pow(8.5,Math.min(1,Math.max(0,t01)));
+    const v=p.algo.vol*(volMul||1);
+    const d=dur||0.07;
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.001,v),t+0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+    osc.connect(g);g.connect(p.ch);
+    osc.start(t);osc.stop(t+d+0.03);
+  }
+  function glissando(p){
+    if(!actx||muted)return;
+    const t0=actx.currentTime,steps=20;
+    for(let k=0;k<steps;k++){
+      blip(p,0.12+0.88*(k/(steps-1)),t0+k*0.032,2.2,0.09,"sine");
+    }
+  }
+
+  /* ---------------- data ---------------- */
+  function makeBase(){
+    base=new Array(n);
+    for(let i=0;i<n;i++)base[i]=i+1;
+    if(condition==="random"){
+      for(let i=n-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        const t=base[i];base[i]=base[j];base[j]=t;
+      }
+    }else if(condition==="reversed"){
+      base.reverse();
+    }else{ /* nearly sorted: a few local swaps */
+      const k=Math.max(3,Math.round(n/14));
+      for(let s=0;s<k;s++){
+        const i=Math.floor(Math.random()*(n-4));
+        const j=i+1+Math.floor(Math.random()*3);
+        const t=base[i];base[i]=base[j];base[j]=t;
+      }
+    }
+  }
+
+  function resetPanels(){
+    finishedCount=0;
+    panels.forEach(function(p){
+      p.a=base.slice();
+      p.gen=p.algo.gen(p.a);
+      p.flashC=new Float32Array(n);
+      p.flashS=new Float32Array(n);
+      p.cmp=0;p.mov=0;p.time=0;p.opsAcc=0;
+      p.status="ready";p.place=0;p.sweep=-1;p.pivot=null;
+      p.lastMsg="Waiting for the gun.";p.sound=null;p.dirty=true;
+      p.dom.flag.hidden=true;
+      p.dom.timwrap.classList.remove("done");
+      p.dom.comm.textContent=p.lastMsg;
+      updateStats(p);
+    });
+  }
+
+  /* ---------------- race engine ---------------- */
+  function stepPanel(p,budget){
+    let used=0;
+    while(used<budget){
+      const r=p.gen.next();
+      if(r.done){finishPanel(p);return;}
+      const op=r.value;
+      if(op.t==="cmp"){
+        p.cmp++;used++;
+        p.flashC[op.i]=1;p.flashC[op.j]=1;
+        p.sound={idx:op.j,acc:false};
+      }else if(op.t==="swap"){
+        p.mov++;used++;
+        p.flashS[op.i]=1;p.flashS[op.j]=1;
+        p.sound={idx:op.j,acc:true};
+      }else if(op.t==="write"){
+        p.mov++;used++;
+        p.flashS[op.i]=1;
+        p.sound={idx:op.i,acc:true};
+      }else if(op.t==="msg"){
+        p.lastMsg=op.text;
+      }else if(op.t==="pivot"){
+        p.pivot=op.i;
+      }
+    }
+  }
+
+  function finishPanel(p){
+    p.status="done";
+    p.place=++finishedCount;
+    p.pivot=null;
+    p.sweep=0;
+    p.dirty=true;
+    const flag=p.dom.flag;
+    flag.innerHTML=(p.place===1?'<span class="checker" aria-hidden="true"></span>':"")+
+      PLACES[p.place-1]+" · "+p.time.toFixed(1)+"s";
+    flag.hidden=false;
+    p.dom.timwrap.classList.add("done");
+    glissando(p);
+    setTicker("<strong>"+p.algo.name+"</strong> finishes "+PLACES[p.place-1].toLowerCase()+" at "+p.time.toFixed(1)+"s — "+
+      p.cmp.toLocaleString("en-US")+" compares, "+p.mov.toLocaleString("en-US")+" moves.");
+    const act=activePanels();
+    if(act.every(function(x){return x.status==="done";})){
+      racing=false;
+      raceBtn.textContent="RACE";
+      raceBtn.classList.remove("stopping");
+      const order=act.slice().sort(function(a,b){return a.place-b.place;});
+      setTicker("<strong>RESULT</strong> — "+order.map(function(x){
+        return x.algo.name+" "+x.time.toFixed(1)+"s";
+      }).join(" · "));
+    }
+  }
+
+  function setTicker(html){ticker.innerHTML=html;}
+
+  function startRace(){
+    ensureAudio();
+    resetPanels();
+    racing=true;
+    raceBtn.textContent="STOP";
+    raceBtn.classList.add("stopping");
+    activePanels().forEach(function(p){p.status="running";});
+    setTicker(soloKey
+      ?"<strong>SOLO RUN</strong> — "+soloKey.toUpperCase()+" on "+n+" bars, "+condLabel()+"."
+      :"<strong>AND THEY'RE OFF</strong> — "+n+" bars, "+condLabel()+".");
+  }
+  function stopRace(msg){
+    racing=false;
+    panels.forEach(function(p){if(p.status==="running")p.status="ready";});
+    raceBtn.textContent="RACE";
+    raceBtn.classList.remove("stopping");
+    if(msg)setTicker(msg);
+  }
+  function condLabel(){
+    return condition==="random"?"random shuffle":condition==="nearly"?"nearly sorted":"fully reversed";
+  }
+
+  /* ---------------- drawing ---------------- */
+  function draw(p){
+    const ctx=p.ctx,W=p.w,H=p.h,len=p.a.length;
+    if(!W||!H||!len)return;
+    ctx.clearRect(0,0,W,H);
+    const bw=W/len,gap=bw>2.5?1:0;
+    for(let i=0;i<len;i++){
+      const v=p.a[i];
+      const h=Math.max(2,(v/len)*(H-8));
+      ctx.fillStyle=BARCOLORS[v-1]||"#888";
+      ctx.fillRect(i*bw,H-h,Math.max(0.6,bw-gap),h);
+    }
+    /* compare flashes */
+    ctx.fillStyle=FLASH_COLOR;
+    for(let i=0;i<len;i++){
+      const f=p.flashC[i];
+      if(f>0.06){
+        const v=p.a[i],h=Math.max(2,(v/len)*(H-8));
+        ctx.globalAlpha=f*0.85;
+        ctx.fillRect(i*bw,H-h,Math.max(0.6,bw-gap),h);
+      }
+    }
+    /* swap flashes in team color */
+    ctx.fillStyle=p.tc;
+    for(let i=0;i<len;i++){
+      const f=p.flashS[i];
+      if(f>0.06){
+        const v=p.a[i],h=Math.max(2,(v/len)*(H-8));
+        ctx.globalAlpha=Math.min(1,f);
+        ctx.fillRect(i*bw,H-h,Math.max(0.6,bw-gap),h);
+      }
+    }
+    ctx.globalAlpha=1;
+    /* pivot marker */
+    if(p.pivot!==null&&p.status==="running"){
+      ctx.fillStyle=p.tc;
+      ctx.fillRect(p.pivot*bw,0,Math.max(2,bw-gap),5);
+    }
+    /* victory sweep */
+    if(p.status==="done"&&p.sweep>=0&&p.sweep<1){
+      const pos=p.sweep*len;
+      ctx.fillStyle=WINBAR;
+      for(let i=0;i<len&&i<pos;i++){
+        const d=(pos-i)/len;
+        const alpha=Math.max(0,0.85-d*3.2);
+        if(alpha<=0.02)continue;
+        const v=p.a[i],h=Math.max(2,(v/len)*(H-8));
+        ctx.globalAlpha=alpha;
+        ctx.fillRect(i*bw,H-h,Math.max(0.6,bw-gap),h);
+      }
+      ctx.globalAlpha=1;
+      ctx.fillStyle=WIN_COLOR;
+      ctx.fillRect(0,H-3,W*Math.min(1,p.sweep),3);
+    }else if(p.status==="done"){
+      ctx.fillStyle=WIN_COLOR;
+      ctx.fillRect(0,H-3,W,3);
+    }
+  }
+
+  function updateStats(p){
+    p.dom.cmp.textContent=p.cmp.toLocaleString("en-US");
+    p.dom.mov.textContent=p.mov.toLocaleString("en-US");
+    p.dom.tim.textContent=p.time.toFixed(1)+"s";
+  }
+
+  /* ---------------- main loop ---------------- */
+  let last=performance.now();
+  function frame(now){
+    const dt=Math.min(0.05,(now-last)/1000);
+    last=now;
+    const opsPerSec=n*6*speedMult();
+    const act=activePanels();
+    const soloPanel=soloKey?act[0]:null;
+
+    for(let pi=0;pi<panels.length;pi++){
+      const p=panels[pi];
+      const isActive=act.indexOf(p)!==-1;
+      if(racing&&isActive&&p.status==="running"){
+        p.time+=dt;
+        p.opsAcc+=opsPerSec*dt;
+        const budget=Math.floor(p.opsAcc);
+        if(budget>0){
+          p.opsAcc-=budget;
+          stepPanel(p,budget);
+          p.dirty=true;
+        }
+        if(p.sound){
+          const v=p.a[Math.min(p.a.length-1,Math.max(0,p.sound.idx))];
+          blip(p,(v-1)/Math.max(1,n-1),undefined,p.sound.acc?1.35:1);
+          p.sound=null;
+        }
+        updateStats(p);
+      }
+      /* decay flashes */
+      if(p.flashC){
+        let hot=false;
+        for(let i=0;i<p.flashC.length;i++){
+          if(p.flashC[i]>0.06){p.flashC[i]*=0.76;hot=true;}else p.flashC[i]=0;
+          if(p.flashS[i]>0.06){p.flashS[i]*=0.78;hot=true;}else p.flashS[i]=0;
+        }
+        if(hot)p.dirty=true;
+      }
+      /* victory sweep progress */
+      if(p.status==="done"&&p.sweep>=0&&p.sweep<1){
+        p.sweep+=dt/(reduceMotion()?0.15:0.9);
+        if(p.sweep>=1)p.sweep=1;
+        p.dirty=true;
+      }
+      if(p.dirty&&(!soloKey||p===soloPanel)){draw(p);p.dirty=false;}
+    }
+
+    /* solo commentary, throttled */
+    if(soloPanel&&now-lastMsgPaint>220){
+      lastMsgPaint=now;
+      if(soloPanel.dom.comm.textContent!==soloPanel.lastMsg)
+        soloPanel.dom.comm.textContent=soloPanel.lastMsg;
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------------- solo mode ---------------- */
+  function toggleSolo(key){
+    stopRace();
+    soloKey=(soloKey===key)?null:key;
+    panels.forEach(function(p){
+      const on=p.algo.key===soloKey;
+      p.el.classList.toggle("solo-active",on);
+      p.dom.solo.textContent=on?"BACK TO GRID":"SOLO";
+      p.dom.solo.setAttribute("aria-pressed",on?"true":"false");
+    });
+    grid.classList.toggle("solo",!!soloKey);
+    panels.forEach(resizePanel);
+    resetPanels();
+    setTicker(soloKey
+      ?"<strong>SOLO: "+soloKey.toUpperCase()+"</strong> — hit RACE for a play-by-play commentary run."
+      :"Back to the 2×2 grid. Hit RACE to run all four.");
+  }
+
+  /* ---------------- controls ---------------- */
+  raceBtn.addEventListener("click",function(){
+    if(racing)stopRace("Race stopped. RE-SHUFFLE or RACE to go again.");
+    else startRace();
+  });
+  shuffleBtn.addEventListener("click",function(){
+    stopRace();
+    makeBase();resetPanels();
+    setTicker("New deck: "+n+" bars, "+condLabel()+". Hit RACE.");
+  });
+  condBtns.forEach(function(b){
+    b.addEventListener("click",function(){
+      condBtns.forEach(function(x){x.setAttribute("aria-pressed",x===b?"true":"false");});
+      condition=b.getAttribute("data-cond");
+      stopRace();
+      makeBase();resetPanels();
+      setTicker(condition==="nearly"
+        ?"Nearly sorted deck loaded — watch <strong>INSERTION</strong> steal this one."
+        :condition==="reversed"
+          ?"Fully reversed deck loaded — worst case for the O(n²) crowd."
+          :"Random shuffle loaded. Hit RACE.");
+    });
+  });
+  sizeR.addEventListener("input",function(){
+    n=Number(sizeR.value);
+    sizeO.textContent=String(n);
+    stopRace();
+    makeBase();rebuildBarColors();resetPanels();
+  });
+  speedR.addEventListener("input",function(){
+    speedO.innerHTML=speedMult().toFixed(2).replace(/0$/,"")+"&times;";
+  });
+  soundBtn.addEventListener("click",function(){
+    muted=!muted;
+    soundBtn.setAttribute("aria-pressed",muted?"false":"true");
+    soundBtn.textContent=muted?"SOUND OFF":"SOUND ON";
+    if(!muted)ensureAudio();
+  });
+
+  /* ---------------- boot ---------------- */
+  makeBase();
+  refreshTheme();
+  panels.forEach(resizePanel);
+  resetPanels();
+  requestAnimationFrame(function(t){last=t;requestAnimationFrame(frame);});
+})();
+</script>
+
+</body>
+</html>

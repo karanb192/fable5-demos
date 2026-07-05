@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Butterfly Effect — 100 Pendulums</title>
+<meta name="description" content="100 double pendulums released 0.0001° apart — real RK4-integrated chaos, watch them agree then explode.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="The Butterfly Effect">
+<meta property="og:description" content="100 double pendulums released 0.0001° apart — real RK4-integrated chaos, watch them agree then explode.">
+<meta property="og:url" content="https://karanb192.github.io/fable5-demos/butterfly-effect/">
+<meta property="og:image" content="https://karanb192.github.io/fable5-demos/butterfly-effect/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The Butterfly Effect">
+<meta name="twitter:description" content="100 double pendulums released 0.0001° apart — real RK4-integrated chaos, watch them agree then explode.">
+<meta name="twitter:image" content="https://karanb192.github.io/fable5-demos/butterfly-effect/og.png">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦋</text></svg>'>
+<style>body{margin:0}</style>
+</head>
+<body>
+<style>
+/* Committed single-theme: a black-lab instrument room. Background is explicit,
+   never inherited. The spectral gradient is reserved strictly for the pendulums;
+   every UI surface stays in cool light-gray hairline monospace. */
+:root{
+  --bg:#05070b;
+  --ink:#b9c2cc;
+  --bright:#e3eaf1;
+  --dim:#66717f;
+  --faint:#3d4652;
+  --line:rgba(169,184,199,0.16);
+  --line-strong:rgba(169,184,199,0.34);
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+:root[data-theme="light"],:root[data-theme="dark"]{ --bg:#05070b; } /* lab stays dark by design */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--bg)}
+body{font-family:var(--mono);color:var(--ink);font-size:12px;line-height:1.5}
+#stage{position:fixed;inset:0;background:var(--bg)}
+#stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;max-width:100%}
+#main{touch-action:none;cursor:crosshair}
+
+.panel{position:fixed;z-index:3;padding:16px 18px;pointer-events:none}
+.panel :is(button,input,label){pointer-events:auto}
+
+/* top-left · identity */
+.tl{top:0;left:0;max-width:52vw}
+.tl h1{margin:0;font-size:13px;font-weight:400;letter-spacing:.34em;color:var(--bright);text-wrap:balance}
+.tl .sub{margin:6px 0 0;font-size:10.5px;letter-spacing:.06em;color:var(--dim)}
+.tl .sub #dsub{white-space:nowrap}
+.tl .hint{margin:14px 0 0;font-size:10.5px;letter-spacing:.06em;color:var(--dim)}
+.tl .hint::before{content:"▸ ";color:var(--faint)}
+.tl .standby{margin:4px 0 0;font-size:10.5px;letter-spacing:.06em;color:var(--ink);display:none}
+
+/* top-right · divergence meter */
+.tr{top:0;right:0;width:308px;max-width:46vw;text-align:left}
+.mhead{display:flex;justify-content:space-between;gap:12px;font-size:10px;letter-spacing:.22em;color:var(--dim)}
+.mhead #status{color:var(--bright);letter-spacing:.22em}
+.mbar{position:relative;margin-top:8px;height:9px;border:1px solid var(--line-strong);background:
+  repeating-linear-gradient(to right,var(--line) 0,var(--line) 1px,transparent 1px,transparent 10.752%)}
+.mfill{position:absolute;inset:1px auto 1px 1px;width:0%;background:linear-gradient(to right,rgba(169,184,199,.35),rgba(227,234,241,.95))}
+.mrow{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 10px;margin-top:6px;font-size:10px;color:var(--dim);
+  font-variant-numeric:tabular-nums;letter-spacing:.04em}
+.mrow>span{white-space:nowrap}
+.mrow b{font-weight:400;color:var(--ink)}
+.mscale{display:flex;justify-content:space-between;font-size:8.5px;color:var(--faint);margin-top:2px;letter-spacing:.05em}
+.caption{margin:14px 0 0;padding-top:10px;border-top:1px solid var(--line);font-size:11px;color:var(--ink);
+  letter-spacing:.03em;opacity:0;transition:opacity 1.6s ease;max-width:36ch}
+.caption.show{opacity:1}
+@media (prefers-reduced-motion:reduce){.caption{transition:none}}
+
+/* bottom-left · controls */
+.bl{bottom:0;left:0;display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;max-width:100vw}
+button{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--ink);
+  background:transparent;border:1px solid var(--line-strong);padding:7px 13px;cursor:pointer}
+button:hover{color:var(--bright);border-color:var(--ink)}
+button[aria-pressed="false"]{color:var(--dim)}
+button:focus-visible,input:focus-visible{outline:1px solid var(--bright);outline-offset:2px}
+#restart{color:var(--bright)}
+.ctl{display:flex;align-items:center;gap:8px;border:1px solid var(--line);padding:6px 12px}
+.ctl label{font-size:10px;letter-spacing:.1em;color:var(--dim);white-space:nowrap}
+.ctl label b{font-weight:400;color:var(--ink);font-variant-numeric:tabular-nums}
+input[type="range"]{width:132px;max-width:30vw;accent-color:#9aa6b2;background:transparent;margin:0}
+.keys{flex-basis:100%;margin:0;font-size:9.5px;letter-spacing:.1em;color:var(--faint)}
+
+/* bottom-right · credit */
+.br{bottom:0;right:0;font-size:10px;letter-spacing:.08em;color:var(--faint);text-align:right}
+
+@media (max-width:620px){
+  .panel{padding:10px 12px}
+  .tl h1{font-size:11px;letter-spacing:.22em}
+  .tl .sub,.tl .hint{font-size:9.5px}
+  .tl .hint{margin-top:8px}
+  .tr{width:46vw}
+  .caption{font-size:10px}
+  .keys{display:none}
+  .br{font-size:8.5px;max-width:38vw}
+  button{padding:6px 10px;font-size:9.5px}
+}
+</style>
+
+<div id="stage">
+  <canvas id="trail"></canvas>
+  <canvas id="main"></canvas>
+</div>
+
+<header class="panel tl">
+  <h1>THE BUTTERFLY EFFECT</h1>
+  <p class="sub">100 double pendulums &middot; released as one &middot; &Delta;&theta;&#8320; = <span id="dsub">1e-4&deg;</span></p>
+  <p class="hint">drag any bob to set a pose &middot; release to drop</p>
+  <p class="standby" id="standby">motion paused &middot; press RESTART to release</p>
+</header>
+
+<section class="panel tr" aria-label="Divergence meter">
+  <div class="mhead"><span>DIVERGENCE &sigma;</span><span id="status">COHERENT</span></div>
+  <div class="mbar"><div class="mfill" id="mfill"></div></div>
+  <div class="mscale"><span>10&#8315;&#8313;</span><span>log &sigma;</span><span>10&#8304;</span></div>
+  <div class="mrow"><span>&sigma; <b id="sig">0.00e+0</b> L</span><span>T+<b id="clock">0.0</b>s</span><span id="brk">BREAK &mdash;</span></div>
+  <p class="caption" id="caption">This is why weather can&rsquo;t be predicted past two weeks.</p>
+</section>
+
+<section class="panel bl" aria-label="Controls">
+  <button id="restart" type="button">RESTART</button>
+  <div class="ctl">
+    <label for="dslider">&Delta;&theta;&#8320; <b id="dval">1e-4&deg;</b></label>
+    <input type="range" id="dslider" min="-6" max="-1" step="1" value="-4" aria-label="Initial angle difference, powers of ten degrees">
+  </div>
+  <button id="btnTrails" type="button" aria-pressed="true">TRAILS ON</button>
+  <button id="btnSingle" type="button" aria-pressed="false">SINGLE OFF</button>
+  <p class="keys">R restart &middot; T trails &middot; S single &middot; drag a bob</p>
+</section>
+
+<footer class="panel br">Built in one shot by Claude Fable 5</footer>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- constants ---------- */
+var N=100, L1=1, L2=1, M1=1, M2=1, G=9.81;
+var DT=1/240, MAXSUB=16, REACH=L1+L2;
+var SI=50;                       // pendulum isolated in SINGLE mode
+
+/* ---------- state ---------- */
+var t1=new Float64Array(N), o1=new Float64Array(N),
+    t2=new Float64Array(N), o2=new Float64Array(N);
+var subX=new Float64Array(MAXSUB*N), subY=new Float64Array(MAXSUB*N);
+var prevX=new Float64Array(N), prevY=new Float64Array(N);   // screen px
+var baseT1=2.0, baseT2=2.6;      // starting pose (rad from vertical-down)
+var deltaExp=-4;                 // slider: 10^exp degrees of total spread
+var simT=0, acc=0, breakT=-1, sigma=0;
+var running=true, dragging=0, frame=0;
+var trailsOn=true, singleOn=false;
+
+var RM=false;
+try{ RM=window.matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
+if(RM) running=false;
+
+/* ---------- dom ---------- */
+function $(id){ return document.getElementById(id); }
+var mainC=$("main"), trailC=$("trail");
+var ctx=mainC.getContext("2d"), tctx=trailC.getContext("2d");
+var elFill=$("mfill"), elSig=$("sig"), elClock=$("clock"), elBrk=$("brk"),
+    elStatus=$("status"), elCaption=$("caption"), elDval=$("dval"),
+    elDsub=$("dsub"), elStandby=$("standby");
+
+if(RM && elStandby) elStandby.style.display="block";
+
+/* ---------- colors: full spectrum, pendulums only ---------- */
+var colors=new Array(N);
+for(var i=0;i<N;i++) colors[i]="hsl("+(i*282/(N-1)).toFixed(1)+",92%,58%)";
+
+/* ---------- viewport ---------- */
+var W=0,H=0,PX=0,PY=0,S=1;
+function resize(){
+  var dpr=window.devicePixelRatio||1;
+  W=window.innerWidth; H=window.innerHeight;
+  mainC.width=Math.round(W*dpr);  mainC.height=Math.round(H*dpr);
+  trailC.width=Math.round(W*dpr); trailC.height=Math.round(H*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  tctx.setTransform(dpr,0,0,dpr,0,0);
+  PX=W*0.5; PY=H*0.42; S=Math.min(W,H)*0.215;
+  seedPrevTips();                 // trail canvas was wiped by resize
+}
+window.addEventListener("resize",resize);
+
+/* ---------- physics: RK4 on the exact double-pendulum ODE ---------- */
+function a1of(T1,O1,T2,O2){
+  var d=T1-T2, den=2*M1+M2-M2*Math.cos(2*d);
+  return (-G*(2*M1+M2)*Math.sin(T1)-M2*G*Math.sin(T1-2*T2)
+          -2*Math.sin(d)*M2*(O2*O2*L2+O1*O1*L1*Math.cos(d)))/(L1*den);
+}
+function a2of(T1,O1,T2,O2){
+  var d=T1-T2, den=2*M1+M2-M2*Math.cos(2*d);
+  return (2*Math.sin(d)*(O1*O1*L1*(M1+M2)+G*(M1+M2)*Math.cos(T1)
+          +O2*O2*L2*M2*Math.cos(d)))/(L2*den);
+}
+function step(i){
+  var y0=t1[i], y1=o1[i], y2=t2[i], y3=o2[i], h=DT, h2=h*0.5;
+
+  var k10=y1,                          k11=a1of(y0,y1,y2,y3),
+      k12=y3,                          k13=a2of(y0,y1,y2,y3);
+  var b0=y0+h2*k10, b1=y1+h2*k11, b2=y2+h2*k12, b3=y3+h2*k13;
+  var k20=b1, k21=a1of(b0,b1,b2,b3), k22=b3, k23=a2of(b0,b1,b2,b3);
+  b0=y0+h2*k20; b1=y1+h2*k21; b2=y2+h2*k22; b3=y3+h2*k23;
+  var k30=b1, k31=a1of(b0,b1,b2,b3), k32=b3, k33=a2of(b0,b1,b2,b3);
+  b0=y0+h*k30; b1=y1+h*k31; b2=y2+h*k32; b3=y3+h*k33;
+  var k40=b1, k41=a1of(b0,b1,b2,b3), k42=b3, k43=a2of(b0,b1,b2,b3);
+
+  t1[i]=y0+h/6*(k10+2*k20+2*k30+k40);
+  o1[i]=y1+h/6*(k11+2*k21+2*k31+k41);
+  t2[i]=y2+h/6*(k12+2*k22+2*k32+k42);
+  o2[i]=y3+h/6*(k13+2*k23+2*k33+k43);
+}
+
+/* ---------- ensemble ---------- */
+function deltaRad(){ return Math.pow(10,deltaExp)*Math.PI/180; }
+function init(clearTrail){
+  var dr=deltaRad();
+  for(var i=0;i<N;i++){
+    t1[i]=baseT1+(i/(N-1)-0.5)*dr;
+    t2[i]=baseT2;
+    o1[i]=0; o2[i]=0;
+  }
+  simT=0; acc=0; breakT=-1; sigma=0;
+  elCaption.classList.remove("show");
+  elBrk.textContent="BREAK —";
+  if(clearTrail) tctx.clearRect(0,0,W,H);
+  seedPrevTips();
+}
+function seedPrevTips(){
+  for(var i=0;i<N;i++){
+    var x=L1*Math.sin(t1[i])+L2*Math.sin(t2[i]);
+    var y=L1*Math.cos(t1[i])+L2*Math.cos(t2[i]);
+    prevX[i]=PX+S*x; prevY[i]=PY+S*y;
+  }
+}
+
+/* ---------- drawing ---------- */
+function drawTrails(nsub){
+  if(!trailsOn||nsub<1) return;
+  if(singleOn){
+    tctx.globalCompositeOperation="source-over";
+    tctx.globalAlpha=0.85; tctx.lineWidth=1.4;
+  }else{
+    tctx.globalCompositeOperation="destination-out";
+    tctx.globalAlpha=1;
+    tctx.fillStyle="rgba(0,0,0,0.045)";
+    tctx.fillRect(0,0,W,H);
+    tctx.globalCompositeOperation="lighter";
+    tctx.globalAlpha=0.30; tctx.lineWidth=1;
+  }
+  tctx.lineCap="round"; tctx.lineJoin="round";
+  var from = singleOn?SI:0, to = singleOn?SI+1:N;
+  for(var i=from;i<to;i++){
+    tctx.strokeStyle=colors[i];
+    tctx.beginPath();
+    tctx.moveTo(prevX[i],prevY[i]);
+    for(var k=0;k<nsub;k++) tctx.lineTo(subX[k*N+i],subY[k*N+i]);
+    tctx.stroke();
+    prevX[i]=subX[(nsub-1)*N+i]; prevY[i]=subY[(nsub-1)*N+i];
+  }
+  tctx.globalCompositeOperation="source-over"; tctx.globalAlpha=1;
+}
+function drawPendulums(){
+  ctx.clearRect(0,0,W,H);
+
+  /* pivot: quiet lab crosshair */
+  ctx.strokeStyle="rgba(169,184,199,0.34)"; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.arc(PX,PY,4,0,6.2832); ctx.stroke();
+  ctx.strokeStyle="rgba(169,184,199,0.16)";
+  ctx.beginPath();
+  ctx.moveTo(PX-11,PY); ctx.lineTo(PX-5,PY); ctx.moveTo(PX+5,PY); ctx.lineTo(PX+11,PY);
+  ctx.moveTo(PX,PY-11); ctx.lineTo(PX,PY-5); ctx.moveTo(PX,PY+5); ctx.lineTo(PX,PY+11);
+  ctx.stroke();
+
+  ctx.lineCap="round";
+  var from = singleOn?SI:0, to = singleOn?SI+1:N;
+  for(var i=from;i<to;i++){
+    var x1=PX+S*L1*Math.sin(t1[i]), y1=PY+S*L1*Math.cos(t1[i]);
+    var x2=x1+S*L2*Math.sin(t2[i]), y2=y1+S*L2*Math.cos(t2[i]);
+    ctx.strokeStyle=colors[i];
+    ctx.globalAlpha=singleOn?0.95:0.42;
+    ctx.lineWidth=singleOn?1.6:1.2;
+    ctx.beginPath(); ctx.moveTo(PX,PY); ctx.lineTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    ctx.globalAlpha=singleOn?1:0.85;
+    ctx.fillStyle=colors[i];
+    ctx.beginPath(); ctx.arc(x2,y2,singleOn?3.2:2,0,6.2832); ctx.fill();
+    if(singleOn){ ctx.beginPath(); ctx.arc(x1,y1,2.4,0,6.2832); ctx.fill(); }
+  }
+  ctx.globalAlpha=1;
+}
+
+/* ---------- divergence meter ---------- */
+function measure(){
+  var mx=0,my=0,i,x,y;
+  for(i=0;i<N;i++){
+    x=L1*Math.sin(t1[i])+L2*Math.sin(t2[i]);
+    y=L1*Math.cos(t1[i])+L2*Math.cos(t2[i]);
+    mx+=x; my+=y;
+  }
+  mx/=N; my/=N;
+  var s=0;
+  for(i=0;i<N;i++){
+    x=L1*Math.sin(t1[i])+L2*Math.sin(t2[i])-mx;
+    y=L1*Math.cos(t1[i])+L2*Math.cos(t2[i])-my;
+    s+=x*x+y*y;
+  }
+  sigma=Math.sqrt(s/N);
+  if(breakT<0 && sigma>0.1 && simT>0){
+    breakT=simT;
+    elBrk.textContent="BREAK T+"+breakT.toFixed(1)+"s";
+    elCaption.classList.add("show");
+  }
+}
+function updateMeter(){
+  var lg=Math.log10(Math.max(sigma,1e-9));
+  var f=Math.max(0,Math.min(1,(lg+9)/9.301));
+  elFill.style.width=(f*100).toFixed(2)+"%";
+  if(frame%6===0){
+    elSig.textContent=sigma.toExponential(2);
+    elClock.textContent=simT.toFixed(1);
+    elStatus.textContent = dragging ? "POSE"
+      : (!running&&simT===0) ? "ARMED"
+      : sigma<1e-3 ? "COHERENT"
+      : sigma<0.05 ? "DIVERGING" : "CHAOS";
+  }
+}
+
+/* ---------- main loop ---------- */
+var last=performance.now();
+function loop(now){
+  var dt=Math.min(0.06,(now-last)/1000); last=now; frame++;
+  var nsub=0;
+  if(running&&!dragging){
+    acc+=dt;
+    while(acc>=DT&&nsub<MAXSUB){
+      for(var i=0;i<N;i++){
+        step(i);
+        subX[nsub*N+i]=PX+S*(L1*Math.sin(t1[i])+L2*Math.sin(t2[i]));
+        subY[nsub*N+i]=PY+S*(L1*Math.cos(t1[i])+L2*Math.cos(t2[i]));
+      }
+      nsub++; acc-=DT;
+    }
+    if(acc>DT) acc=0;             // dropped time after a long stall
+    simT+=nsub*DT;
+    drawTrails(nsub);
+    measure();
+  }
+  drawPendulums();
+  updateMeter();
+  requestAnimationFrame(loop);
+}
+
+/* ---------- interactions ---------- */
+function restart(){
+  init(true);
+  running=true;
+  if(elStandby) elStandby.style.display="none";
+}
+$("restart").addEventListener("click",restart);
+
+var slider=$("dslider");
+function fmtDelta(){ return "1e"+deltaExp+"°"; }
+slider.addEventListener("input",function(){
+  deltaExp=parseInt(slider.value,10);
+  elDval.textContent=fmtDelta();
+  elDsub.textContent=fmtDelta();
+  restart();
+});
+
+var btnTrails=$("btnTrails"), btnSingle=$("btnSingle");
+function setTrails(v){
+  trailsOn=v;
+  btnTrails.setAttribute("aria-pressed",String(v));
+  btnTrails.textContent="TRAILS "+(v?"ON":"OFF");
+  if(v){ seedPrevTips(); } else { tctx.clearRect(0,0,W,H); }
+}
+function setSingle(v){
+  singleOn=v;
+  btnSingle.setAttribute("aria-pressed",String(v));
+  btnSingle.textContent="SINGLE "+(v?"ON":"OFF");
+  tctx.clearRect(0,0,W,H);
+  seedPrevTips();
+}
+btnTrails.addEventListener("click",function(){ setTrails(!trailsOn); });
+btnSingle.addEventListener("click",function(){ setSingle(!singleOn); });
+
+document.addEventListener("keydown",function(e){
+  var tag=e.target&&e.target.tagName;
+  if(tag==="INPUT"||tag==="BUTTON"||tag==="TEXTAREA"||tag==="SELECT") return;
+  if(e.key==="r"||e.key==="R"){ restart(); }
+  else if(e.key===" "){ e.preventDefault(); restart(); }
+  else if(e.key==="t"||e.key==="T"){ setTrails(!trailsOn); }
+  else if(e.key==="s"||e.key==="S"){ setSingle(!singleOn); }
+});
+
+/* drag either bob: bob 1 swings the upper arm, bob 2 runs two-link IK */
+var bendSign=1;
+function nearestBob(mx,my,rad){
+  var best=0,bd=rad*rad,bi=-1;
+  for(var i=0;i<N;i++){
+    var x1=PX+S*L1*Math.sin(t1[i]), y1=PY+S*L1*Math.cos(t1[i]);
+    var x2=x1+S*L2*Math.sin(t2[i]), y2=y1+S*L2*Math.cos(t2[i]);
+    var d1=(mx-x1)*(mx-x1)+(my-y1)*(my-y1);
+    var d2=(mx-x2)*(mx-x2)+(my-y2)*(my-y2);
+    if(d2<=bd){ bd=d2; best=2; bi=i; }
+    if(d1<bd){ bd=d1; best=1; bi=i; }
+  }
+  return bi<0?0:best;
+}
+function applyDrag(mx,my){
+  var tx=(mx-PX)/S, ty=(my-PY)/S;
+  if(dragging===1){
+    baseT1=Math.atan2(tx,ty);
+  }else{
+    var d=Math.sqrt(tx*tx+ty*ty);
+    d=Math.max(1e-4,Math.min(REACH-1e-6,d));
+    var phi=Math.atan2(tx,ty);
+    var ca=(L1*L1+d*d-L2*L2)/(2*L1*d);
+    var al=Math.acos(Math.max(-1,Math.min(1,ca)));
+    var T1=phi+bendSign*al;
+    var T2=Math.atan2(tx-L1*Math.sin(T1),ty-L1*Math.cos(T1));
+    if(Math.sin(T2-T1)*bendSign<0){ T1=phi-bendSign*al;
+      T2=Math.atan2(tx-L1*Math.sin(T1),ty-L1*Math.cos(T1)); }
+    baseT1=T1; baseT2=T2;
+  }
+  init(true);
+}
+mainC.addEventListener("pointerdown",function(e){
+  var b=nearestBob(e.clientX,e.clientY,30);
+  if(!b) return;
+  dragging=b;
+  bendSign=Math.sin(t2[SI]-t1[SI])>=0?1:-1;
+  running=false;
+  mainC.setPointerCapture(e.pointerId);
+  mainC.style.cursor="grabbing";
+  applyDrag(e.clientX,e.clientY);
+});
+mainC.addEventListener("pointermove",function(e){
+  if(dragging){ applyDrag(e.clientX,e.clientY); return; }
+  mainC.style.cursor=nearestBob(e.clientX,e.clientY,30)?"grab":"crosshair";
+});
+function release(e){
+  if(!dragging) return;
+  dragging=0;
+  mainC.style.cursor="crosshair";
+  init(true);
+  running=true;                    // released together — user-initiated
+  if(elStandby) elStandby.style.display="none";
+}
+mainC.addEventListener("pointerup",release);
+mainC.addEventListener("pointercancel",release);
+
+/* ---------- boot ---------- */
+elDval.textContent=fmtDelta();
+elDsub.textContent=fmtDelta();
+resize();
+init(true);
+if(!running) elStatus.textContent="ARMED";
+requestAnimationFrame(loop);
+})();
+</script>
+
+</body>
+</html>

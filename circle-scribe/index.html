@@ -1,0 +1,1118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Circle Scribe — draw it, and circles redraw it</title>
+<meta name="description" content="Draw anything — then watch a chain of spinning circles redraw it perfectly.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Circle Scribe">
+<meta property="og:description" content="Draw anything — then watch a chain of spinning circles redraw it perfectly.">
+<meta property="og:url" content="https://karanb192.github.io/fable5-demos/circle-scribe/">
+<meta property="og:image" content="https://karanb192.github.io/fable5-demos/circle-scribe/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Circle Scribe">
+<meta name="twitter:description" content="Draw anything — then watch a chain of spinning circles redraw it perfectly.">
+<meta name="twitter:image" content="https://karanb192.github.io/fable5-demos/circle-scribe/og.png">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✏️</text></svg>'>
+<style>body{margin:0}</style>
+</head>
+<body>
+<style>
+  :root {
+    --bg: #e8edf4;
+    --pane: #f5f8fc;
+    --edge: #a9bdd4;
+    --edge-soft: #c3d2e3;
+    --ink: #16273d;
+    --muted: #5b7391;
+    --signal: #b57000;
+    --machine: #33608f;
+    --grid: #33608f;
+    --ghost: #5b7391;
+    --btn-bg: rgba(51, 96, 143, 0.06);
+    --focus: #b57000;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #081625;
+      --pane: #0c1f36;
+      --edge: #2a4a6e;
+      --edge-soft: #1c3552;
+      --ink: #d9e7f5;
+      --muted: #7e9bbd;
+      --signal: #ffd23f;
+      --machine: #aecbe8;
+      --grid: #aecbe8;
+      --ghost: #7e9bbd;
+      --btn-bg: rgba(174, 203, 232, 0.06);
+      --focus: #ffd23f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #081625;
+    --pane: #0c1f36;
+    --edge: #2a4a6e;
+    --edge-soft: #1c3552;
+    --ink: #d9e7f5;
+    --muted: #7e9bbd;
+    --signal: #ffd23f;
+    --machine: #aecbe8;
+    --grid: #aecbe8;
+    --ghost: #7e9bbd;
+    --btn-bg: rgba(174, 203, 232, 0.06);
+    --focus: #ffd23f;
+  }
+  :root[data-theme="light"] {
+    --bg: #e8edf4;
+    --pane: #f5f8fc;
+    --edge: #a9bdd4;
+    --edge-soft: #c3d2e3;
+    --ink: #16273d;
+    --muted: #5b7391;
+    --signal: #b57000;
+    --machine: #33608f;
+    --grid: #33608f;
+    --ghost: #5b7391;
+    --btn-bg: rgba(51, 96, 143, 0.06);
+    --focus: #b57000;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", system-ui, ui-sans-serif, Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    overflow-x: hidden;
+  }
+
+  .sheet {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: clamp(14px, 2.5vw, 30px) clamp(12px, 3vw, 28px) 36px;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(16px, 2.4vw, 26px);
+  }
+
+  /* ---------- masthead ---------- */
+  .masthead {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 18px;
+    border-bottom: 1px solid var(--edge);
+    padding-bottom: 14px;
+  }
+  .masthead h1 {
+    font-family: "Avenir Next Condensed", "Helvetica Neue Condensed", "Arial Narrow", ui-sans-serif, sans-serif;
+    font-weight: 700;
+    font-size: clamp(30px, 5.2vw, 48px);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin: 0 0 4px;
+    line-height: 1;
+    text-wrap: balance;
+  }
+  .masthead h1 .o { color: var(--signal); }
+  .tagline {
+    margin: 0;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-style: italic;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .dwgmeta {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-align: right;
+    white-space: nowrap;
+    line-height: 1.8;
+    text-transform: uppercase;
+  }
+  @media (max-width: 700px) { .dwgmeta { display: none; } }
+
+  /* ---------- panes ---------- */
+  .panes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(12px, 2vw, 22px);
+  }
+  @media (max-width: 820px) { .panes { grid-template-columns: 1fr; } }
+
+  .pane {
+    position: relative;
+    background: var(--pane);
+    border: 1px solid var(--edge);
+    aspect-ratio: 1 / 0.92;
+    min-height: 260px;
+    overflow: hidden;
+  }
+  .pane canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  #canvasIn { cursor: crosshair; touch-action: none; }
+
+  .pane-label {
+    position: absolute;
+    top: 8px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    pointer-events: none;
+    z-index: 2;
+  }
+  .pane-label strong { color: var(--ink); font-weight: 600; }
+  .pane-foot {
+    position: absolute;
+    bottom: 8px;
+    left: 10px;
+    right: 10px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-style: italic;
+    font-size: 11px;
+    color: var(--muted);
+    pointer-events: none;
+    z-index: 2;
+  }
+  .pane-foot .num { font-style: normal; font-variant-numeric: tabular-nums; color: var(--signal); }
+
+  .playveil {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+  }
+  .playveil.on { display: flex; }
+  .playveil button {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: var(--pane);
+    border: 1px solid var(--signal);
+    padding: 12px 22px;
+    cursor: pointer;
+  }
+
+  /* ---------- controls ---------- */
+  .controls {
+    border: 1px solid var(--edge);
+    background: var(--pane);
+    padding: clamp(14px, 2.4vw, 22px) clamp(14px, 2.4vw, 24px);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .ctl-hero label {
+    display: block;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .k-row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .k-row output {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: clamp(17px, 2.4vw, 22px);
+    font-weight: 600;
+    color: var(--signal);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    min-width: 7.5ch;
+    text-align: right;
+  }
+  .ticks {
+    margin: 6px 2px 0;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-style: italic;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    height: 26px;
+    background: transparent;
+    margin: 0;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 2px;
+    background: var(--edge);
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    margin-top: -7px;
+    border-radius: 50%;
+    background: var(--pane);
+    border: 2px solid var(--signal);
+  }
+  input[type="range"]::-moz-range-track {
+    height: 2px;
+    background: var(--edge);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--pane);
+    border: 2px solid var(--signal);
+  }
+  input[type="range"]:focus-visible { outline: 2px dashed var(--focus); outline-offset: 4px; }
+
+  .ctl-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px 22px;
+    border-top: 1px solid var(--edge-soft);
+    padding-top: 14px;
+  }
+  .switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: var(--ink);
+    cursor: pointer;
+    user-select: none;
+  }
+  .switch input {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    border: 1px solid var(--muted);
+    background: transparent;
+    cursor: pointer;
+    display: inline-block;
+    position: relative;
+    flex: none;
+  }
+  .switch input:checked { border-color: var(--signal); }
+  .switch input:checked::after {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    background: var(--signal);
+  }
+  .switch input:focus-visible { outline: 2px dashed var(--focus); outline-offset: 3px; }
+
+  .speed-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 190px;
+    max-width: 340px;
+  }
+  .speed-wrap .lbl, .presets .lbl {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .speed-wrap output {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    min-width: 5.5ch;
+  }
+
+  button.tbtn {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: var(--btn-bg);
+    border: 1px solid var(--edge);
+    padding: 7px 13px;
+    cursor: pointer;
+  }
+  button.tbtn:hover { border-color: var(--signal); }
+  button.tbtn:focus-visible { outline: 2px dashed var(--focus); outline-offset: 2px; }
+  button.tbtn.active {
+    color: var(--signal);
+    border-color: var(--signal);
+    background: transparent;
+  }
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+  .btn-spacer { flex: 1; }
+
+  /* ---------- aside + footer ---------- */
+  .fieldnote {
+    border-left: 2px solid var(--signal);
+    padding: 4px 0 4px 18px;
+    max-width: 74ch;
+  }
+  .fieldnote h2 {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 8px;
+    font-weight: 600;
+  }
+  .fieldnote p { margin: 0; font-size: 15px; }
+
+  .titleblock {
+    border: 1px solid var(--edge);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  .titleblock .cell {
+    border-right: 1px solid var(--edge-soft);
+    padding: 8px 12px 10px;
+    min-width: 0;
+  }
+  .titleblock .cell:last-child { border-right: none; }
+  .titleblock .cap {
+    display: block;
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+  .titleblock .val {
+    font-size: 12px;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  @media (max-width: 700px) {
+    .titleblock { grid-template-columns: 1fr 1fr; }
+    .titleblock .cell { border-bottom: 1px solid var(--edge-soft); }
+    .titleblock .cell:nth-child(2n) { border-right: none; }
+    .titleblock .cell:nth-child(n+3) { border-bottom: none; }
+  }
+  .credit {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    margin: 10px 2px 0;
+  }
+</style>
+
+<div class="sheet">
+
+  <header class="masthead">
+    <div>
+      <h1>Circle Scribe<span class="o">.</span></h1>
+      <p class="tagline">every closed scribble is a sum of rotations — prove it with your own hand</p>
+    </div>
+    <div class="dwgmeta">
+      DWG № CS-001 · REV A<br>
+      METHOD: DISCRETE FOURIER TRANSFORM<br>
+      SCALE 1:1 · TRACE: SIGNAL YELLOW
+    </div>
+  </header>
+
+  <main>
+    <section class="panes" aria-label="Drawing and reconstruction panes">
+      <div class="pane">
+        <div class="pane-label"><span><strong>01 — INPUT</strong></span><span>your hand</span></div>
+        <canvas id="canvasIn" aria-label="Drawing surface. Press and drag to draw one continuous stroke."></canvas>
+        <div class="pane-foot" id="hintIn"><em>draw anything here — one continuous stroke. release, and the machine takes it.</em></div>
+      </div>
+      <div class="pane">
+        <div class="pane-label"><span><strong>02 — RECONSTRUCTION</strong></span><span><span class="num" id="kPane" style="font-variant-numeric:tabular-nums">100</span> rotations</span></div>
+        <canvas id="canvasOut" aria-label="Reconstruction: a chain of rotating circles redrawing the input."></canvas>
+        <div class="pane-foot"><em>each circle&#8217;s tip carries the next · the last tip holds the pen</em></div>
+        <div class="playveil" id="playVeil"><button type="button" id="playBtn">Run the machine</button></div>
+      </div>
+    </section>
+
+    <section class="controls" aria-label="Machine controls">
+      <div class="ctl-hero">
+        <label for="kSlider">Circles in the machine — sweep it and watch detail appear</label>
+        <div class="k-row">
+          <input type="range" id="kSlider" min="1" max="200" value="100" step="1" aria-label="Number of circles">
+          <output id="kOut" for="kSlider">N&#8202;=&#8202;100</output>
+        </div>
+        <p class="ticks"><em>3 — a wobbly blob &nbsp;·&nbsp; 20 — recognizably yours &nbsp;·&nbsp; 150 — exact</em></p>
+      </div>
+
+      <div class="ctl-row">
+        <label class="switch"><input type="checkbox" id="tglMachine" checked> show machinery</label>
+        <label class="switch"><input type="checkbox" id="tglPersist" checked> trace stays</label>
+        <label class="switch"><input type="checkbox" id="tglGhost" checked> ghost original</label>
+        <span class="speed-wrap">
+          <span class="lbl">speed</span>
+          <input type="range" id="spSlider" min="0.25" max="3" value="1" step="0.05" aria-label="Playback speed">
+          <output id="spOut" for="spSlider">×1.00</output>
+        </span>
+        <button type="button" class="tbtn" id="btnReplay">Replay</button>
+        <button type="button" class="tbtn" id="btnPause">Pause</button>
+      </div>
+
+      <div class="ctl-row presets">
+        <span class="lbl">Presets</span>
+        <button type="button" class="tbtn preset active" data-preset="swallow">Swallow</button>
+        <button type="button" class="tbtn preset" data-preset="treble">Treble clef</button>
+        <button type="button" class="tbtn preset" data-preset="hand">Hand</button>
+        <button type="button" class="tbtn preset" data-preset="africa">Africa</button>
+        <span class="btn-spacer"></span>
+        <button type="button" class="tbtn" id="btnClear">Clear</button>
+      </div>
+    </section>
+  </main>
+
+  <aside class="fieldnote">
+    <h2>Field note — why this trick runs the world</h2>
+    <p>The slider is the whole lesson. Each circle is one pure frequency: the big slow ones carry the overall shape, the small fast ones carry the detail, and stacking more of them sharpens the copy. That is a Fourier series — no equation required. This same trick is how JPEG stores photos (keep the big circles, throw away the tiny ones), how your phone isolates your voice from street noise, and how audio software pulls a single instrument out of a mix.</p>
+  </aside>
+
+  <footer>
+    <div class="titleblock" aria-label="Drawing title block">
+      <div class="cell"><span class="cap">Project</span><span class="val">Circle Scribe</span></div>
+      <div class="cell"><span class="cap">Method</span><span class="val">DFT · epicycles</span></div>
+      <div class="cell"><span class="cap">Samples</span><span class="val">720 / revolution</span></div>
+      <div class="cell"><span class="cap">Sheet</span><span class="val">1 of 1</span></div>
+    </div>
+    <p class="credit">Built in one shot by Claude Fable 5</p>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var TAU = Math.PI * 2;
+  var SAMPLES = 720;        // resample resolution and reconstruction resolution
+  var CYCLE_MS = 9000;      // one full revolution at speed ×1
+
+  // ---------- elements ----------
+  var cvIn = document.getElementById("canvasIn");
+  var cvOut = document.getElementById("canvasOut");
+  var ctxIn = cvIn.getContext("2d");
+  var ctxOut = cvOut.getContext("2d");
+  var kSlider = document.getElementById("kSlider");
+  var kOut = document.getElementById("kOut");
+  var kPane = document.getElementById("kPane");
+  var spSlider = document.getElementById("spSlider");
+  var spOut = document.getElementById("spOut");
+  var tglMachine = document.getElementById("tglMachine");
+  var tglPersist = document.getElementById("tglPersist");
+  var tglGhost = document.getElementById("tglGhost");
+  var btnReplay = document.getElementById("btnReplay");
+  var btnPause = document.getElementById("btnPause");
+  var btnClear = document.getElementById("btnClear");
+  var hintIn = document.getElementById("hintIn");
+  var playVeil = document.getElementById("playVeil");
+  var playBtn = document.getElementById("playBtn");
+  var presetBtns = Array.prototype.slice.call(document.querySelectorAll(".preset"));
+
+  // ---------- theme-derived colors ----------
+  var COL = {};
+  function refreshColors() {
+    var cs = getComputedStyle(document.documentElement);
+    COL.ink = cs.getPropertyValue("--ink").trim();
+    COL.muted = cs.getPropertyValue("--muted").trim();
+    COL.machine = cs.getPropertyValue("--machine").trim();
+    COL.signal = cs.getPropertyValue("--signal").trim();
+    COL.grid = cs.getPropertyValue("--grid").trim();
+    COL.ghost = cs.getPropertyValue("--ghost").trim();
+  }
+
+  // ---------- state ----------
+  var samples = null;       // resampled normalized path, length SAMPLES
+  var coeffs = [];          // sorted rotating coefficients {freq, amp, phase}
+  var offset = { x: 0, y: 0 };
+  var recon = null;         // reconstruction polyline for current K
+  var K = parseInt(kSlider.value, 10);
+  var t = 0;                // current angle 0..TAU
+  var traveled = 0;         // total angle traveled since reset, capped at TAU
+  var speed = parseFloat(spSlider.value);
+  var running = true;
+  var dirty = true;
+  var drawing = false;
+  var rawPts = [];
+  var prm = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  // ---------- geometry helpers ----------
+  function normalizePts(pts) {
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, i;
+    for (i = 0; i < pts.length; i++) {
+      if (pts[i].x < minX) minX = pts[i].x;
+      if (pts[i].x > maxX) maxX = pts[i].x;
+      if (pts[i].y < minY) minY = pts[i].y;
+      if (pts[i].y > maxY) maxY = pts[i].y;
+    }
+    var cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    var span = Math.max(maxX - minX, maxY - minY, 1e-6);
+    var s = 2 / span;
+    var out = [];
+    for (i = 0; i < pts.length; i++) {
+      out.push({ x: (pts[i].x - cx) * s, y: (pts[i].y - cy) * s });
+    }
+    return out;
+  }
+
+  function resampleClosed(pts, n) {
+    if (!pts || pts.length < 3) return null;
+    var cum = [], total = 0, i;
+    for (i = 0; i < pts.length; i++) {
+      var a = pts[i], b = pts[(i + 1) % pts.length];
+      total += Math.hypot(b.x - a.x, b.y - a.y);
+      cum.push(total);
+    }
+    if (total < 1e-6) return null;
+    var out = [], seg = 0;
+    for (var k = 0; k < n; k++) {
+      var d = total * k / n;
+      while (cum[seg] < d) seg++;
+      var start = seg === 0 ? 0 : cum[seg - 1];
+      var p = pts[seg], q = pts[(seg + 1) % pts.length];
+      var len = cum[seg] - start;
+      var u = len > 1e-9 ? (d - start) / len : 0;
+      out.push({ x: p.x + (q.x - p.x) * u, y: p.y + (q.y - p.y) * u });
+    }
+    return out;
+  }
+
+  function dft(pts) {
+    var N = pts.length, list = [], k, n;
+    for (k = 0; k < N; k++) {
+      var re = 0, im = 0, w = -TAU * k / N;
+      for (n = 0; n < N; n++) {
+        var ph = w * n, c = Math.cos(ph), s = Math.sin(ph);
+        re += pts[n].x * c - pts[n].y * s;
+        im += pts[n].x * s + pts[n].y * c;
+      }
+      re /= N; im /= N;
+      list.push({
+        freq: k <= N / 2 ? k : k - N,
+        amp: Math.hypot(re, im),
+        phase: Math.atan2(im, re)
+      });
+    }
+    return list;
+  }
+
+  function rebuildRecon() {
+    if (!coeffs.length) { recon = null; return; }
+    var keff = Math.min(K, coeffs.length);
+    var pts = new Array(SAMPLES);
+    for (var s = 0; s < SAMPLES; s++) {
+      var tt = TAU * s / SAMPLES;
+      var x = offset.x, y = offset.y;
+      for (var j = 0; j < keff; j++) {
+        var c = coeffs[j];
+        var ang = c.freq * tt + c.phase;
+        x += c.amp * Math.cos(ang);
+        y += c.amp * Math.sin(ang);
+      }
+      pts[s] = { x: x, y: y };
+    }
+    recon = pts;
+  }
+
+  function setPath(normPts, replayFromZero) {
+    var rs = resampleClosed(normPts, SAMPLES);
+    if (!rs) return false;
+    samples = rs;
+    var all = dft(rs);
+    var dcIdx = -1;
+    for (var i = 0; i < all.length; i++) { if (all[i].freq === 0) { dcIdx = i; break; } }
+    var dc = dcIdx >= 0 ? all.splice(dcIdx, 1)[0] : null;
+    offset = dc
+      ? { x: dc.amp * Math.cos(dc.phase), y: dc.amp * Math.sin(dc.phase) }
+      : { x: 0, y: 0 };
+    all.sort(function (a, b) { return b.amp - a.amp; });
+    coeffs = all;
+    rebuildRecon();
+    if (replayFromZero) { t = 0; traveled = 0; }
+    dirty = true;
+    renderLeft();
+    return true;
+  }
+
+  // ---------- presets ----------
+  function fromFlat(arr) {
+    var out = [];
+    for (var i = 0; i < arr.length; i += 2) out.push({ x: arr[i], y: arr[i + 1] });
+    return out;
+  }
+  function sampleBezierChain(segs, per) {
+    var out = [];
+    for (var i = 0; i < segs.length; i++) {
+      var g = segs[i]; // [x0,y0, c1x,c1y, c2x,c2y, x1,y1]
+      for (var j = 0; j < per; j++) {
+        var u = j / per, v = 1 - u;
+        out.push({
+          x: v * v * v * g[0] + 3 * v * v * u * g[2] + 3 * v * u * u * g[4] + u * u * u * g[6],
+          y: v * v * v * g[1] + 3 * v * v * u * g[3] + 3 * v * u * u * g[5] + u * u * u * g[7]
+        });
+      }
+    }
+    out.push({ x: segs[segs.length - 1][6], y: segs[segs.length - 1][7] });
+    return out;
+  }
+  function retraceClose(pts) {
+    var out = pts.slice();
+    for (var i = pts.length - 2; i > 0; i--) out.push(pts[i]);
+    return out;
+  }
+
+  var PRESETS = {
+    swallow: fromFlat([
+      50, 6, 55, 9, 58, 15, 64, 19, 80, 24, 97, 36, 85, 35, 73, 36, 63, 38,
+      60, 50, 63, 64, 67, 86, 59, 68, 50, 62, 41, 68, 33, 86, 37, 64, 40, 50,
+      37, 38, 27, 36, 15, 35, 3, 36, 20, 24, 36, 19, 42, 15, 45, 9
+    ]),
+    hand: fromFlat([
+      36, 98, 31, 82, 25, 70, 13, 60, 7, 53, 11, 47, 19, 50, 27, 55,
+      30, 48, 29, 22, 30.5, 14, 35, 13.5, 37, 22, 38, 46, 39.5, 48,
+      41, 46, 40.5, 16, 42, 7, 47, 7, 49, 16, 50, 46, 51.5, 48,
+      53, 46, 52.5, 20, 54, 12, 58.5, 12, 60, 20, 61, 47, 62.5, 50,
+      64, 48, 63.5, 32, 65, 25, 69, 25.5, 70.5, 32, 71, 50,
+      73, 58, 74, 74, 70, 98
+    ]),
+    africa: fromFlat([
+      22, 14, 34, 6, 45, 10, 58, 8, 66, 10, 70, 16, 68, 24, 74, 32,
+      88, 38, 80, 44, 70, 50, 68, 60, 62, 72, 56, 84, 50, 92, 46, 94,
+      38, 88, 36, 76, 38, 66, 34, 58, 32, 55, 40, 50, 28, 48, 14, 44,
+      5, 36, 10, 25, 16, 16
+    ]),
+    treble: retraceClose(sampleBezierChain([
+      [48, 58, 54, 63, 60, 58, 59, 52],
+      [59, 52, 57, 45, 46, 44, 40, 50],
+      [40, 50, 32, 58, 36, 70, 48, 74],
+      [48, 74, 62, 77, 68, 64, 65, 54],
+      [65, 54, 58, 44, 48, 40, 46, 30],
+      [46, 30, 44, 20, 46, 10, 53, 6],
+      [53, 6, 60, 3, 62, 12, 58, 20],
+      [58, 20, 54, 30, 50, 44, 50, 60],
+      [50, 60, 50, 72, 50, 80, 49, 84],
+      [49, 84, 48, 92, 38, 94, 35, 88],
+      [35, 88, 33, 83, 39, 82, 41, 86]
+    ], 28))
+  };
+
+  var activePreset = "swallow";
+  function updatePresetButtons() {
+    presetBtns.forEach(function (b) {
+      b.classList.toggle("active", b.dataset.preset === activePreset);
+    });
+  }
+  function loadPreset(name) {
+    activePreset = name;
+    updatePresetButtons();
+    setPath(normalizePts(PRESETS[name]), true);
+    hintIn.innerHTML = "<em>this one is a preset — draw over it to make it yours.</em>";
+  }
+
+  // ---------- canvas sizing ----------
+  function sizeCanvas(cv, ctx) {
+    var dpr = window.devicePixelRatio || 1;
+    var w = cv.clientWidth, h = cv.clientHeight;
+    if (w < 2 || h < 2) return;
+    var pw = Math.round(w * dpr), ph = Math.round(h * dpr);
+    if (cv.width !== pw || cv.height !== ph) {
+      cv.width = pw;
+      cv.height = ph;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function sizeAll() {
+    sizeCanvas(cvIn, ctxIn);
+    sizeCanvas(cvOut, ctxOut);
+    renderLeft();
+    dirty = true;
+  }
+
+  // ---------- rendering ----------
+  function drawGrid(ctx, w, h) {
+    var s = Math.max(16, Math.round(Math.min(w, h) / 16));
+    ctx.save();
+    ctx.strokeStyle = COL.grid;
+    ctx.lineWidth = 1;
+    var nx = Math.ceil(w / 2 / s), ny = Math.ceil(h / 2 / s), i, p;
+    for (i = -nx; i <= nx; i++) {
+      p = Math.round(w / 2 + i * s) + 0.5;
+      ctx.globalAlpha = i % 4 === 0 ? 0.16 : 0.07;
+      ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, h); ctx.stroke();
+    }
+    for (i = -ny; i <= ny; i++) {
+      p = Math.round(h / 2 + i * s) + 0.5;
+      ctx.globalAlpha = i % 4 === 0 ? 0.16 : 0.07;
+      ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(w, p); ctx.stroke();
+    }
+    // center registration marks
+    ctx.globalAlpha = 0.35;
+    ctx.beginPath();
+    ctx.moveTo(w / 2 - 7, h / 2); ctx.lineTo(w / 2 + 7, h / 2);
+    ctx.moveTo(w / 2, h / 2 - 7); ctx.lineTo(w / 2, h / 2 + 7);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function paneScale(w, h) { return Math.min(w, h) * 0.40; }
+
+  function tracePolyline(ctx, pts, cx, cy, sc, from, to, wrap) {
+    ctx.beginPath();
+    var first = true;
+    for (var i = from; i <= to; i++) {
+      var idx = wrap ? ((i % pts.length) + pts.length) % pts.length : i;
+      if (idx < 0 || idx >= pts.length) continue;
+      var x = cx + pts[idx].x * sc, y = cy + pts[idx].y * sc;
+      if (first) { ctx.moveTo(x, y); first = false; } else { ctx.lineTo(x, y); }
+    }
+    ctx.stroke();
+  }
+
+  function renderLeft() {
+    var w = cvIn.clientWidth, h = cvIn.clientHeight;
+    if (!w || !h) return;
+    ctxIn.clearRect(0, 0, w, h);
+    drawGrid(ctxIn, w, h);
+    ctxIn.save();
+    ctxIn.lineJoin = "round";
+    ctxIn.lineCap = "round";
+    if (drawing && rawPts.length > 1) {
+      ctxIn.strokeStyle = COL.signal;
+      ctxIn.lineWidth = 2;
+      ctxIn.globalAlpha = 1;
+      ctxIn.beginPath();
+      ctxIn.moveTo(rawPts[0].x, rawPts[0].y);
+      for (var i = 1; i < rawPts.length; i++) ctxIn.lineTo(rawPts[i].x, rawPts[i].y);
+      ctxIn.stroke();
+    } else if (samples) {
+      var cx = w / 2, cy = h / 2, sc = paneScale(w, h);
+      ctxIn.strokeStyle = COL.signal;
+      ctxIn.lineWidth = 2;
+      ctxIn.globalAlpha = 0.95;
+      ctxIn.beginPath();
+      ctxIn.moveTo(cx + samples[0].x * sc, cy + samples[0].y * sc);
+      for (var j = 1; j < samples.length; j++) {
+        ctxIn.lineTo(cx + samples[j].x * sc, cy + samples[j].y * sc);
+      }
+      ctxIn.closePath();
+      ctxIn.stroke();
+      // start-of-path registration dot
+      ctxIn.fillStyle = COL.ink;
+      ctxIn.globalAlpha = 0.85;
+      ctxIn.beginPath();
+      ctxIn.arc(cx + samples[0].x * sc, cy + samples[0].y * sc, 2.5, 0, TAU);
+      ctxIn.fill();
+    }
+    ctxIn.restore();
+  }
+
+  function renderMachine() {
+    var w = cvOut.clientWidth, h = cvOut.clientHeight;
+    if (!w || !h) return;
+    ctxOut.clearRect(0, 0, w, h);
+    drawGrid(ctxOut, w, h);
+    var cx = w / 2, cy = h / 2, sc = paneScale(w, h);
+
+    if (!recon) {
+      ctxOut.save();
+      ctxOut.fillStyle = COL.muted;
+      ctxOut.globalAlpha = 0.9;
+      ctxOut.font = "italic 13px ui-monospace, 'SF Mono', Menlo, Consolas, monospace";
+      ctxOut.textAlign = "center";
+      ctxOut.fillText("— awaiting a drawing —", cx, cy);
+      ctxOut.restore();
+      return;
+    }
+
+    ctxOut.save();
+    ctxOut.lineJoin = "round";
+    ctxOut.lineCap = "round";
+
+    // ghost of the original
+    if (tglGhost.checked && samples) {
+      ctxOut.strokeStyle = COL.ghost;
+      ctxOut.lineWidth = 1;
+      ctxOut.globalAlpha = 0.30;
+      ctxOut.setLineDash([4, 5]);
+      ctxOut.beginPath();
+      ctxOut.moveTo(cx + samples[0].x * sc, cy + samples[0].y * sc);
+      for (var g = 1; g < samples.length; g++) {
+        ctxOut.lineTo(cx + samples[g].x * sc, cy + samples[g].y * sc);
+      }
+      ctxOut.closePath();
+      ctxOut.stroke();
+      ctxOut.setLineDash([]);
+    }
+
+    // the trace
+    var S = recon.length;
+    ctxOut.strokeStyle = COL.signal;
+    ctxOut.lineWidth = 2.25;
+    if (tglPersist.checked) {
+      var count = Math.round(Math.min(traveled, TAU) / TAU * S);
+      if (traveled >= TAU - 1e-9) {
+        ctxOut.globalAlpha = 1;
+        ctxOut.beginPath();
+        ctxOut.moveTo(cx + recon[0].x * sc, cy + recon[0].y * sc);
+        for (var r = 1; r < S; r++) ctxOut.lineTo(cx + recon[r].x * sc, cy + recon[r].y * sc);
+        ctxOut.closePath();
+        ctxOut.stroke();
+      } else if (count > 1) {
+        ctxOut.globalAlpha = 1;
+        tracePolyline(ctxOut, recon, cx, cy, sc, 0, count, false);
+      }
+    } else {
+      // fading comet tail
+      var windowAng = 0.8 * TAU;
+      var endIdx = Math.round(t / TAU * S);
+      var n = Math.round(Math.min(traveled, windowAng) / TAU * S);
+      if (n > 1) {
+        var chunks = 22;
+        var per = Math.max(2, Math.ceil(n / chunks));
+        for (var c = 0; c < chunks; c++) {
+          var i0 = endIdx - n + c * per;
+          var i1 = Math.min(endIdx, i0 + per);
+          if (i1 <= i0) continue;
+          ctxOut.globalAlpha = Math.pow((c + 1) / chunks, 1.6) * 0.95 + 0.05;
+          tracePolyline(ctxOut, recon, cx, cy, sc, i0, i1, true);
+        }
+      }
+    }
+
+    // the machinery
+    var keff = Math.min(K, coeffs.length);
+    var px = cx + offset.x * sc, py = cy + offset.y * sc;
+    if (tglMachine.checked) {
+      ctxOut.strokeStyle = COL.machine;
+      ctxOut.lineWidth = 1;
+      for (var j = 0; j < keff; j++) {
+        var co = coeffs[j];
+        var rad = co.amp * sc;
+        var ang = co.freq * t + co.phase;
+        var nx = px + rad * Math.cos(ang);
+        var ny = py + rad * Math.sin(ang);
+        if (rad > 0.75) {
+          ctxOut.globalAlpha = 0.28;
+          ctxOut.beginPath();
+          ctxOut.arc(px, py, rad, 0, TAU);
+          ctxOut.stroke();
+          ctxOut.globalAlpha = 0.55;
+          ctxOut.beginPath();
+          ctxOut.moveTo(px, py);
+          ctxOut.lineTo(nx, ny);
+          ctxOut.stroke();
+        }
+        px = nx; py = ny;
+      }
+    } else {
+      for (var q = 0; q < keff; q++) {
+        var cq = coeffs[q];
+        var aq = cq.freq * t + cq.phase;
+        px += cq.amp * sc * Math.cos(aq);
+        py += cq.amp * sc * Math.sin(aq);
+      }
+    }
+
+    // the pen
+    ctxOut.globalAlpha = 0.55;
+    ctxOut.strokeStyle = COL.signal;
+    ctxOut.lineWidth = 1;
+    ctxOut.beginPath();
+    ctxOut.arc(px, py, 7, 0, TAU);
+    ctxOut.stroke();
+    ctxOut.globalAlpha = 1;
+    ctxOut.fillStyle = COL.signal;
+    ctxOut.beginPath();
+    ctxOut.arc(px, py, 3.2, 0, TAU);
+    ctxOut.fill();
+
+    ctxOut.restore();
+  }
+
+  // ---------- animation loop ----------
+  var last = performance.now();
+  function frame(now) {
+    var dt = Math.min(64, now - last);
+    last = now;
+    if (running && recon) {
+      var da = TAU * dt / CYCLE_MS * speed;
+      t += da;
+      traveled = Math.min(traveled + da, TAU);
+      if (t >= TAU) t -= TAU;
+      dirty = true;
+    }
+    if (dirty) {
+      renderMachine();
+      dirty = false;
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- interactions ----------
+  function getPos(e) {
+    var r = cvIn.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+  cvIn.addEventListener("pointerdown", function (e) {
+    e.preventDefault();
+    try { cvIn.setPointerCapture(e.pointerId); } catch (err) {}
+    drawing = true;
+    rawPts = [getPos(e)];
+    renderLeft();
+  });
+  cvIn.addEventListener("pointermove", function (e) {
+    if (!drawing) return;
+    var p = getPos(e);
+    var lastP = rawPts[rawPts.length - 1];
+    if (Math.hypot(p.x - lastP.x, p.y - lastP.y) > 1.5) {
+      rawPts.push(p);
+      renderLeft();
+    }
+  });
+  function endStroke() {
+    if (!drawing) return;
+    drawing = false;
+    var len = 0;
+    for (var i = 1; i < rawPts.length; i++) {
+      len += Math.hypot(rawPts[i].x - rawPts[i - 1].x, rawPts[i].y - rawPts[i - 1].y);
+    }
+    if (rawPts.length >= 8 && len > 30) {
+      activePreset = null;
+      updatePresetButtons();
+      setPath(normalizePts(rawPts), true);
+      hintIn.innerHTML = "<em>registered. the machine is redrawing your line &#8594;</em>";
+      if (!running) setRunning(true);
+    } else {
+      renderLeft(); // too short — keep the old path
+    }
+    rawPts = [];
+  }
+  cvIn.addEventListener("pointerup", endStroke);
+  cvIn.addEventListener("pointercancel", endStroke);
+
+  kSlider.addEventListener("input", function () {
+    K = parseInt(kSlider.value, 10);
+    var keff = Math.min(K, coeffs.length || K);
+    kOut.textContent = "N = " + keff;
+    kPane.textContent = keff;
+    rebuildRecon();
+    if (recon) traveled = TAU; // reveal the whole curve so the sweep teaches instantly
+    dirty = true;
+  });
+  spSlider.addEventListener("input", function () {
+    speed = parseFloat(spSlider.value);
+    spOut.textContent = "×" + speed.toFixed(2);
+  });
+  tglMachine.addEventListener("change", function () { dirty = true; });
+  tglPersist.addEventListener("change", function () { dirty = true; });
+  tglGhost.addEventListener("change", function () { dirty = true; });
+
+  var veilDismissed = false; // the veil only serves the reduced-motion first load
+  function setRunning(on) {
+    running = on;
+    if (on) veilDismissed = true;
+    btnPause.textContent = on ? "Pause" : "Run";
+    playVeil.classList.toggle("on", !on && !!recon && !veilDismissed);
+    if (on) { last = performance.now(); }
+    dirty = true;
+  }
+  btnPause.addEventListener("click", function () { setRunning(!running); });
+  playBtn.addEventListener("click", function () { setRunning(true); });
+  btnReplay.addEventListener("click", function () {
+    t = 0; traveled = 0; dirty = true;
+    if (!running) setRunning(true);
+  });
+  btnClear.addEventListener("click", function () {
+    samples = null; coeffs = []; recon = null;
+    offset = { x: 0, y: 0 };
+    t = 0; traveled = 0;
+    activePreset = null;
+    updatePresetButtons();
+    hintIn.innerHTML = "<em>blank sheet. draw anything here — one continuous stroke.</em>";
+    playVeil.classList.remove("on");
+    renderLeft();
+    dirty = true;
+  });
+  presetBtns.forEach(function (b) {
+    b.addEventListener("click", function () {
+      loadPreset(b.dataset.preset);
+      if (!running) setRunning(true);
+    });
+  });
+
+  // ---------- resize + theme plumbing ----------
+  if (typeof ResizeObserver !== "undefined") {
+    var ro = new ResizeObserver(sizeAll);
+    ro.observe(cvIn.parentElement);
+    ro.observe(cvOut.parentElement);
+  }
+  window.addEventListener("resize", sizeAll);
+
+  var mo = new MutationObserver(function () { refreshColors(); renderLeft(); dirty = true; });
+  mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  var mq = window.matchMedia("(prefers-color-scheme: dark)");
+  if (mq.addEventListener) {
+    mq.addEventListener("change", function () { refreshColors(); renderLeft(); dirty = true; });
+  }
+
+  // ---------- boot ----------
+  refreshColors();
+  sizeAll();
+  loadPreset("swallow");
+  kOut.textContent = "N = " + Math.min(K, coeffs.length);
+  kPane.textContent = Math.min(K, coeffs.length);
+  if (prm.matches) {
+    setRunning(false); // reduced motion: hold still until the viewer asks
+    traveled = TAU;    // but show the finished reconstruction, not a blank pane
+    dirty = true;
+  } else {
+    veilDismissed = true; // veil only serves the reduced-motion first load; Pause must not summon it
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
