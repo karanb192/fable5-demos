@@ -1,8 +1,8 @@
-# New demo submission
+# New simulation submission
 
-**Demo name:**
+**Simulation name:**
 
-**Model + version:** <!-- e.g. Claude Fable 5, GPT-5.2, Gemini 3 Pro -->
+**Model:** <!-- exact model string, e.g. claude-fable-5 — this collection is Fable 5 one-shots -->
 
 **One-shot statement:** <!-- Was this a single attempt? Any follow-up passes? Be honest — bug-fix passes are fine, cosmetic re-prompting loops are not. -->
 
